@@ -1,0 +1,285 @@
+# =============================================================================
+# LCA INPUT DATA  --  anti-leak film material comparison
+# =============================================================================
+# THIS FILE IS THE ONLY PLACE NUMBERS LIVE.
+# Edit values here; never edit the calculation code to change an input.
+#
+# Every numeric input MUST carry a `confidence` tag. Allowed values:
+#
+#   "literature"  Literature-backed. Traceable to a published LCA, eco-profile,
+#                 EPD or peer-reviewed paper. `source` is mandatory.
+#   "derived"     Derived by calculation in this model from stoichiometry or
+#                 composition. `derivation` is mandatory and is re-checked by
+#                 the test suite, so these numbers cannot silently drift.
+#   "estimate"    Industry-typical estimate. Defensible order of magnitude from
+#                 general engineering knowledge, but not traced to a source.
+#   "placeholder" PLACEHOLDER, NEEDS A SOURCE. No credible published figure was
+#                 found. Any result that consumes one of these is flagged.
+#
+# `low` / `high` bound the plausible range and drive the sensitivity report.
+# Where a range is very wide, that IS the finding -- do not narrow it to look
+# tidier than the evidence is.
+# =============================================================================
+
+[meta]
+title            = "Cradle-to-grave GHG comparison: sanitary product anti-leak film"
+functional_unit  = "1 kg of finished film material"
+boundary         = "Cradle to grave: raw material acquisition + production, film forming, biogenic carbon uptake, end of life. Excludes converting, distribution, and use phase, which are assumed equivalent across the three candidates."
+gwp_method       = "GWP100, IPCC AR6"
+prepared         = "2026 reconstruction of a 2023 project. Original process data is NOT available; all figures are representative published values, tagged by confidence."
+
+[constants]
+# Molar masses (g/mol) used by the biogenic-carbon and stoichiometric routines.
+m_c   = 12.011
+m_co2 = 44.009
+m_ch4 = 16.043
+# GWP100 of biogenic (non-fossil) methane, IPCC AR6.
+gwp100_biogenic_methane = 27.0
+
+
+# =============================================================================
+# LDPE  --  industry reference point
+# =============================================================================
+[[materials]]
+id       = "ldpe"
+name     = "LDPE"
+role     = "Industry reference point"
+summary  = "Low-density polyethylene. Fossil-derived, not biodegradable, the default barrier film in this product category."
+# (C2H4)n : C 24.022 / MW 28.054
+carbon_mass_fraction         = 0.8563
+biogenic_carbon_mass_fraction = 0.0
+
+[[materials.stages]]
+id         = "raw_material"
+label      = "Raw material + polymerisation"
+value      = 1.80
+low        = 1.70
+high       = 2.00
+confidence = "literature"
+source     = "PlasticsEurope eco-profile for LDPE resin, cradle-to-gate; commonly reported in the ~1.7-2.0 kg CO2e/kg range."
+note       = "Naphtha cracking to ethylene plus polymerisation. European average grid and steam."
+
+[[materials.stages]]
+id         = "processing"
+label      = "Processing (blown/cast extrusion)"
+value      = 0.25
+low        = 0.15
+high       = 0.40
+confidence = "estimate"
+source     = ""
+note       = "Film extrusion energy at UK grid intensity. Not traced to a specific eco-profile; sensitive to line efficiency and grid year."
+
+[[materials.eol_routes]]
+id         = "incineration"
+label      = "Incineration (no energy-recovery credit)"
+value      = 2.90
+low        = 2.80
+high       = 3.14
+confidence = "literature"
+source     = "Near-total combustion of fossil carbon; widely reported ~2.9 kg CO2e/kg for PE."
+note       = "Upper bound 3.14 is the stoichiometric maximum at 100% oxidation of 85.63% carbon. The 2.90 central value implies ~92% oxidation. No energy-recovery credit is taken, which is the conservative choice."
+
+[[materials.eol_routes]]
+id         = "landfill"
+label      = "Landfill"
+value      = 0.05
+low        = 0.01
+high       = 0.10
+confidence = "estimate"
+source     = ""
+note       = "LDPE is largely inert on landfill timescales. Value covers site operations only. Carbon stays sequestered, which flatters LDPE on GWP alone and says nothing about persistence."
+
+
+# =============================================================================
+# PVA  --  the incumbent material
+# =============================================================================
+[[materials]]
+id       = "pva"
+name     = "PVA (polyvinyl alcohol)"
+role     = "Incumbent material"
+summary  = "Water-soluble polymer, made by hydrolysis of polyvinyl acetate rather than by polymerising a monomer. Fossil-derived but water-soluble and, contentiously, described as biodegradable."
+# (C2H4O)n : C 24.022 / MW 44.053
+carbon_mass_fraction         = 0.5453
+biogenic_carbon_mass_fraction = 0.0
+
+[[materials.stages]]
+id         = "raw_material"
+label      = "Raw material + hydrolysis of PVAc"
+value      = 2.36
+low        = 2.36
+high       = 3.40
+confidence = "literature"
+source     = "Kuraray, KURARAY POVAL(TM) life cycle assessment, 2024 update: 2.36 kg CO2e per kg PVOH, cradle-to-gate, Frankfurt production (2.47 in the preceding assessment)."
+note       = "Central value is a single manufacturer's own site-specific LCA, so it is a best case rather than an industry average. Kuraray states the figure is ~30% below the PVOH average in a major LCI database, which implies a generic average near 3.4 -- used here as the upper bound. Range is therefore manufacturer-best to database-average, not a measurement uncertainty."
+
+[[materials.stages]]
+id         = "processing"
+label      = "Processing (solution casting / extrusion)"
+value      = 0.30
+low        = 0.20
+high       = 0.45
+confidence = "estimate"
+source     = ""
+note       = "Assumed comparable to other film-forming routes, slightly above LDPE extrusion because water must be driven off in solution casting."
+
+[[materials.eol_routes]]
+id         = "biodegradation"
+label      = "End of life: biodegradation (wastewater / aqueous)"
+value      = 2.00
+low        = 0.40
+high       = 2.00
+confidence = "derived"
+derivation = "stoichiometric_full_oxidation"
+source     = "Stoichiometry. Degradation EXTENT is contested: Rolsky & Kelkar, Int. J. Environ. Res. Public Health 2021, 18, 6027 (doi:10.3390/ijerph18116027) model only ~15-40% degradation in US wastewater treatment plants, implying most passes through; an industry-commissioned expert panel (SciPinion, 2024) and the American Cleaning Institute reject that model and conclude PVA is readily biodegradable."
+note       = "CRITICAL: on this route a LOWER number is NOT better. The high value (2.00) is complete mineralisation of the fossil carbon. The low value (0.40) represents the Rolsky & Kelkar case where ~80% does not mineralise -- the GWP falls only because the polymer persists in the environment as fragments instead. GWP alone cannot rank this route; see the qualitative flag."
+
+[[materials.eol_routes]]
+id         = "incineration"
+label      = "End of life: incineration"
+value      = 2.00
+low        = 1.84
+high       = 2.00
+confidence = "derived"
+derivation = "stoichiometric_full_oxidation"
+source     = "Stoichiometry: 54.53% carbon x 44.009/12.011."
+note       = "Low bound assumes 92% oxidation, matching the oxidation efficiency implied by the LDPE incineration figure."
+
+[[materials.eol_routes]]
+id         = "landfill"
+label      = "End of life: landfill"
+value      = 0.10
+low        = 0.02
+high       = 0.30
+confidence = "estimate"
+source     = ""
+note       = "Slow anaerobic degradation with some methane generation, partially captured. Not source-traced."
+
+[[materials.qualitative_flags]]
+severity = "high"
+topic    = "Microplastic persistence"
+text     = "PVA passes OECD 301 biodegradability screening, but that test does not establish the fate of the polymer in real wastewater treatment or in soil. There is published evidence of persistent fragments. This is a real impact that carries NO GWP number and is therefore invisible in every total in this model. Do not read a low PVA end-of-life figure as an environmental win."
+
+
+# =============================================================================
+# BIOMATERIAL FILM  --  the proposed replacement
+# =============================================================================
+# Raw-material footprint is BUILT UP from the blend components below, so the
+# formulation can be changed here without touching any calculation code.
+# =============================================================================
+[[materials]]
+id       = "biofilm"
+name     = "Biomaterial film (alginate / zein / stearic acid)"
+role     = "Proposed replacement"
+summary  = "Solvent-cast and dehydrated film from sodium alginate, zein and stearic acid. All three components are biogenic, so the film carries a biogenic carbon credit at uptake and returns that carbon at end of life."
+
+[[materials.composition]]
+component        = "Sodium alginate"
+mass_fraction    = 0.60
+frac_confidence  = "placeholder"
+frac_note        = "Formulation ratio is reconstructed, not measured. The original 2023 recipe is unavailable. Alginate is assumed the film former and majority component."
+# (C6H7NaO6)n : C 72.066 / MW 198.106
+carbon_mass_fraction = 0.3638
+biogenic             = true
+value      = 21.29
+low        = 4.00
+high       = 21.30
+confidence = "literature"
+source     = "CarbonCloud ClimateHub product report, sodium alginate (E401): 21.29 kg CO2e/kg, cradle-to-gate. Independently corroborated by a seaweed-biorefinery LCA reporting 7042.7 kg CO2e per tonne dry seaweed yielding 338 kg alginate = 20.8 kg CO2e/kg if unallocated."
+note       = "Two independent routes landing near 21 is reassuring, but the biorefinery figure is UNALLOCATED across co-products so it is an upper bound, not a confirmation. The 4.00 lower bound comes from Sargassum-derived calcium alginate composite bioplastics reported at 4-5.9 kg CO2e/kg of finished bioplastic (RSC Green Chem., 2023, 25, 5501), a different feedstock and process. Hotspots in every source are seaweed drying and extraction yield, so this value is highly process-specific. Do not treat 21.29 as the footprint of THIS film's alginate without a supplier-specific figure."
+
+[[materials.composition]]
+component        = "Zein"
+mass_fraction    = 0.30
+frac_confidence  = "placeholder"
+frac_note        = "Reconstructed formulation ratio, not measured."
+carbon_mass_fraction = 0.5300
+biogenic             = true
+value      = 3.00
+low        = 1.00
+high       = 760.00
+confidence = "placeholder"
+source     = "NO CREDIBLE INDUSTRIAL FIGURE FOUND. The only located zein LCA (RSC Green Chem., 2026, 'Life cycle assessment of zein, ethyl lactate, and derivative nanofiltration membranes') reports 760 and 5300 kg CO2e per kg zein for lab-scale solvent extraction routes -- three orders of magnitude above any plausible commercial value, and dominated by solvent use at laboratory scale."
+note       = "Central value is a PROXY, not a measurement: zein is a co-product of corn wet milling, whose corn-derived streams sit near 0.65-1.75 kg CO2e/kg (CarbonCloud corn starch/flour reports), uplifted for the ethanol extraction and drying needed to isolate zein from corn gluten meal. The upper bound of 760 is retained deliberately: it is what the only published number says, and hiding it would misrepresent how unresolved this input is. THIS IS THE WEAKEST INPUT IN THE MODEL."
+
+[[materials.composition]]
+component        = "Stearic acid"
+mass_fraction    = 0.10
+frac_confidence  = "placeholder"
+frac_note        = "Reconstructed formulation ratio, not measured. Acts as plasticiser / hydrophobic modifier."
+# C18H36O2 : C 216.198 / MW 284.484
+carbon_mass_fraction = 0.7600
+biogenic             = true
+value      = 11.20
+low        = 3.40
+high       = 11.20
+confidence = "literature"
+source     = "CarbonCloud ClimateHub product report, stearic acid (E570): 11.20 kg CO2e/kg."
+note       = "Single-source figure, food-grade, and almost certainly includes palm land-use change. Lower bound 3.40 is RSPO-certified crude palm oil at 3.41 kg CO2e/kg (non-certified 5.34), i.e. the feedstock alone before splitting, fractionation and hydrogenation -- so 3.40 is a hard floor, not a likely value. Tallow-derived stearic acid would sit at a different point entirely depending on the allocation taken against the meat co-product."
+
+[[materials.stages]]
+id         = "processing"
+label      = "Processing (solution casting + dehydration)"
+value      = 0.30
+low        = 0.20
+high       = 0.60
+confidence = "estimate"
+source     = ""
+note       = "Comparable to other solvent-cast film processes. Upper bound allows for the high water load of an alginate casting solution; dehydration energy scales with solids content, which is unknown here."
+
+[[materials.eol_routes]]
+id         = "composting"
+label      = "End of life: industrial composting"
+value      = 0.10
+low        = 0.05
+high       = 0.20
+confidence = "estimate"
+source     = "Composting operations energy only. Carbon release is modelled separately from carbon content, see the fractions below."
+note       = "`value` is fossil CO2e from collection and site operations. The biogenic carbon released is computed by the model from the blend's carbon content, so it always mirrors the biogenic credit and cannot drift out of step with it."
+biogenic_carbon_released_fraction = 0.95
+methane_share_of_released_carbon  = 0.02
+methane_capture_rate              = 0.0
+release_confidence = "literature"
+release_source     = "95% release of stored carbon under industrial composting follows the assumption used by Patel et al. (2018) and repeated across compostable-plastic LCAs; the residual ~5% is retained in compost as stabilised carbon."
+release_note       = "2% of released carbon as CH4 represents anaerobic pockets in an otherwise aerobic windrow; uncaptured. Biogenic CH4 valued at GWP100 = 27."
+
+[[materials.eol_routes]]
+id         = "landfill"
+label      = "End of life: landfill"
+value      = 0.05
+low        = 0.02
+high       = 0.10
+confidence = "estimate"
+source     = ""
+note       = "Site operations only; the methane burden is computed from carbon content below."
+biogenic_carbon_released_fraction = 0.50
+methane_share_of_released_carbon  = 0.50
+methane_capture_rate              = 0.60
+release_confidence = "estimate"
+release_source     = ""
+release_note       = "Half the carbon degrades on a 100-year horizon, half of that anaerobically to CH4, 60% of which is captured and flared at a modern engineered site. Every one of those three numbers is a typical value, not a measured one -- landfill is the least certain route in the model and the most sensitive to capture rate."
+
+[[materials.eol_routes]]
+id         = "incineration"
+label      = "End of life: incineration (no energy-recovery credit)"
+value      = 0.05
+low        = 0.02
+high       = 0.10
+confidence = "estimate"
+source     = ""
+note       = "Fossil CO2e from plant operations only. All biogenic carbon is released as CO2, computed from carbon content."
+biogenic_carbon_released_fraction = 1.00
+methane_share_of_released_carbon  = 0.0
+methane_capture_rate              = 0.0
+release_confidence = "derived"
+release_source     = "Complete oxidation."
+release_note       = ""
+
+[[materials.qualitative_flags]]
+severity = "medium"
+topic    = "Formulation is reconstructed"
+text     = "All three blend ratios are placeholders. Because the component footprints differ by a factor of ~7 (alginate 21.29 vs zein proxy 3.00), the blend ratio is not a detail -- it moves the raw-material total materially. Replace with the real recipe before quoting any number from this model."
+
+[[materials.qualitative_flags]]
+severity = "medium"
+topic    = "Seaweed sequestration not credited"
+text     = "Only the carbon embodied in the film itself is credited. Any wider blue-carbon or nutrient-remediation benefit from seaweed cultivation is excluded, as is any land-use-change burden from the palm-derived stearic acid beyond what the source figure already contains."
