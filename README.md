@@ -34,14 +34,14 @@ python3 -m lca_film --placeholders                    # what still needs a sourc
 python3 -m lca_film --svg out/chart.svg --csv out.csv # artefacts
 python3 -m lca_film --inputs mine.toml                # a different dataset
 
-python3 -m unittest discover -s tests                 # 71 tests
+python3 -m unittest discover -s tests                 # 87 tests
 ```
 
 Change one input without touching the file:
 
 ```bash
 python3 -m lca_film --set biofilm/component/alginate=6.0 --table
-python3 -m lca_film --scenario harmonised_boundary \
+python3 -m lca_film --scenario sargassum_route \
                     --set biofilm/component/zein=2.0 --trace biofilm/composting
 ```
 
@@ -56,59 +56,57 @@ cannot smuggle in a `literature` tag with no citation.
 Two scenarios, because the honest answer depends on a sourcing decision:
 
 ```
-                                        default   harmonised   food-database
-LDPE        -- incineration                4.95         4.95            4.95
-LDPE        -- landfill                    2.10         2.10            2.10
-PVA         -- biodegradation (aqueous)    4.66         4.66            4.66
-PVA         -- incineration                4.66         4.66            4.66
-PVA         -- landfill                    2.76         2.76            2.76
-Biomaterial -- industrial composting      14.70 !!      4.33 !!        15.39 !!
-Biomaterial -- landfill                   15.09 !!      4.72 !!        15.78 !!
-Biomaterial -- incineration               14.45 !!      4.08 !!        15.14 !!
-                                          !! = placeholder-based
+                                       default    range      sargassum route
+LDPE        -- incineration               4.95   4.65- 5.54             4.95
+LDPE        -- landfill                   2.10   1.86- 2.50             2.10
+PVA         -- biodegradation (aqueous)   4.66   2.96- 5.85             4.66
+PVA         -- incineration               4.66   4.40- 5.85             4.66
+PVA         -- landfill                   2.76   2.58- 4.15             2.76
+Biomaterial -- industrial composting     14.70 !! 13.57-16.71           4.33 !!
+Biomaterial -- landfill                  15.09 !! 13.98-17.05           4.72 !!
+Biomaterial -- incineration              14.45 !! 13.34-16.41           4.08 !!
+                                         !! = placeholder-based
 ```
 
-### Why the biomaterial moves by 4x between those columns
+The biomaterial range was **3.49–242.90** before scope variants were separated
+from parametric uncertainty. Nothing about the evidence changed; the model
+stopped reporting a category error as an uncertainty interval.
 
-Not a bug, and not the biogenic credit: **a system-boundary mismatch in the
-source data.**
+### Two different ways source figures disagree
 
-- LDPE and PVA use polymer eco-profiles. PlasticsEurope's declared unit is
-  *1 kg of unpacked resin at production site out* — no packaging, no storage, no
-  retail transport, no land-use change.
-- Alginate and stearic acid central values come from CarbonCloud's ClimateHub, a
-  **food-ingredient** database whose stated boundary runs *from agricultural
-  inputs to the retail shelf*, covering agriculture, transport, refinement,
-  **packaging, storage** and waste, with deforestation in its agricultural
-  engine.
+The model separates them, because conflating them is how a scope error gets
+laundered into a confidence interval.
 
-Adding a packaged-food-at-shelf figure to an unpacked-resin-at-gate figure and
-comparing the totals overstates the bio-based material by an unknown amount. The
-model now records a `boundary` on every input, audits it against the study
-target, and prints the mismatch with its **direction of bias** next to the
-results. `--scenario harmonised_boundary` substitutes the lowest independently
-sourced values on a comparable industrial basis.
+**1. Boundary mismatch — different scope, same product.** LDPE and PVA use
+polymer eco-profiles; PlasticsEurope's declared unit is *1 kg of unpacked resin
+at production site out*. The alginate figure comes from CarbonCloud's
+ClimateHub, a **food-ingredient** database running *from agricultural inputs to
+the retail shelf*, including packaging, storage and deforestation. Every input
+records a `boundary`; the loader audits it and the report prints each mismatch
+with its **direction of bias**. Stearic acid was fixed this way. Alginate cannot
+be — the correction is real but its size is unknown, and inventing one would
+reintroduce the error. It stays flagged. `--boundaries`
 
-Neither column is the answer. The default is pessimistic for the biomaterial;
-the harmonised scenario is optimistic, because the alginate substitute is a
-lower bound rather than a best estimate. The truth sits between roughly 4.3 and
-14.7, and closing that gap needs supplier-specific data, not more searching.
+**2. Scope variants — different product entirely.** These are published numbers
+that measure something else, and they must never be range bounds:
 
-### The ecoinvent stearic acid figure could not be retrieved
+| Was used as | Actually measures | Now |
+|---|---|---|
+| Alginate low bound **4.00** | A finished *Sargassum calcium alginate composite bioplastic* — different product, waste-class feedstock, boundary that commonly excludes seaweed drying | Scope variant, `--scenario sargassum_route` |
+| Zein high bound **760** | A *laboratory solvent inventory*. Same functional unit, same nominal boundary — the gap is bench vs industrial scale with no solvent recovery. At 760+, corn upstream is under 0.3% of the total | Scope variant |
 
-The `ecoinvent` *stearic acid production* dataset exists (v3.6 through v3.10) and
-is the correct source for this input. It is not in the model because:
+A variant declared `comparable = false` must state `why_not_comparable`, and the
+loader **refuses** to let its value be used as a `low` or `high`. `--scenario`
+can pull one by id, so a scenario cannot drift from the variant it claims to use.
 
-- **Climatiq**, which indexes it, states it cannot publish raw ecoinvent factors
-  under its licence terms — so this is a licensing wall, not a fetching problem.
-- The **ecoinvent portal**, **GLAD**, and journal hosts carrying papers that cite
-  the dataset are all blocked by this environment's egress policy.
-
-Rather than leave a food-database figure on the wrong boundary, the input is now
-**interpolated between two published cradle-to-gate anchors on the same palm
-oleochemical chain** and tagged `DER`, with the bracket pinned by tests. If you
-have ecoinvent access, replacing it is a one-line edit to `inputs.toml` and the
-single easiest upgrade left in this model.
+**3. Unquantified uncertainty — drivers with no number.** Alginate's range is now
+20.80–21.30, which would read as a 2% uncertainty. It is not. It is the
+*agreement between the only two sources measuring purified alginate*. What
+actually makes it uncertain — extraction yield, biorefinery co-product
+allocation, the retail-shelf correction, purification depth — carries no
+defensible number and so sits in an `unquantified` list printed next to the
+value. A short bar in the sensitivity ranking is not a settled input, and the
+report says so.
 
 ### What the model says
 
@@ -229,12 +227,13 @@ inputs.toml          ALL data + scenarios -- the only file to edit
 lca_film/
   confidence.py      Confidence tags and how they propagate
   boundary.py        System-boundary tracking and mismatch detection
-  model.py           Data structures
+  model.py           Data structures, incl. ScopeVariant (a different measurement,
+                     never a bound) and unquantified uncertainty drivers
   config.py          Loads, applies scenarios/overrides, strictly validates
   calculate.py       The calculation -- contains no numbers of its own
   report.py          Tables, ASCII chart, sensitivity, boundary audit, --trace
   chart.py           Dependency-free themed SVG chart
   __main__.py        CLI
-tests/test_lca.py    71 tests
+tests/test_lca.py    87 tests
 out/                 Generated charts (regenerate with --svg)
 ```

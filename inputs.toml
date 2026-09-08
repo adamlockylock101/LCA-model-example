@@ -219,12 +219,50 @@ frac_note        = "Formulation ratio is reconstructed, not measured. The origin
 carbon_mass_fraction = 0.3638
 biogenic             = true
 value      = 21.29
-low        = 4.00
+low        = 20.80
 high       = 21.30
 confidence = "literature"
 boundary   = "retail_shelf"
-source     = "CarbonCloud ClimateHub product report, sodium alginate (E401): 21.29 kg CO2e/kg."
-note       = "BOUNDARY MISMATCH: CarbonCloud's stated boundary runs from agricultural inputs to the retail shelf and covers agriculture, transport, refinement, PACKAGING, STORAGE and waste, with deforestation included in the agricultural engine. That is materially wider than the unpacked-resin-at-factory-gate basis of the LDPE and PVA figures, so 21.29 is biased HIGH for this comparison. The direction of the bias is known; its size is not. Corroboration that alginate is genuinely high-impact regardless: a seaweed-biorefinery LCA gives ~20.8 kg CO2e/kg if unallocated across co-products, and alginate composite films are reported at 3-7x PLA and PET, i.e. roughly 7-20 kg CO2e/kg, driven by chemical consumption in extraction. Lower bound 4.00 is Sargassum calcium-alginate bioplastic at 4-5.9 kg CO2e/kg (RSC Green Chem., 2023, 25, 5501)."
+source     = "CarbonCloud ClimateHub product report, sodium alginate (E401): 21.29 kg CO2e/kg, cradle to retail shelf."
+note       = "Range is the agreement between the only TWO sources that measure purified alginate: CarbonCloud 21.29, and a seaweed-biorefinery LCA giving ~20.8 kg CO2e/kg (7042.7 kg CO2e per tonne dry seaweed yielding 338 kg alginate). READ THE RANGE CORRECTLY: 20.80-21.30 means those two sources agree, NOT that alginate is known to within 2%. Everything that actually makes this number uncertain -- extraction yield, biorefinery co-product allocation, and the retail-shelf boundary -- is listed under `unquantified` below because none of it can be given a defensible number from the sources found. The 4.00-5.90 Sargassum figure previously used as the lower bound has been moved to a scope variant: it measures a composite bioplastic, not alginate, and was making a product mismatch look like uncertainty. BOUNDARY: CarbonCloud runs from agricultural inputs to the retail shelf including packaging, storage and deforestation, so 21.29 is biased HIGH against the factory-gate polymer eco-profiles; direction known, size not."
+unquantified = [
+  "Extraction yield. The biorefinery figure states 338 kg alginate per tonne dry seaweed (33.8%). Alginate content varies by species, season and extraction route, and both alginate LCAs found name yield as a main hotspot. Per-kg footprint scales inversely with yield, so a yield half as good doubles this number. No sourced yield range was found, so this is not in low/high.",
+  "Co-product allocation. The ~20.8 corroborating figure assigns 100% of a multi-output biorefinery (food, materials AND energy from one tonne of seaweed) to the alginate stream. That was this model's choice, not the study's. Under any co-product allocation the alginate share falls, by an amount that depends entirely on the allocation basis chosen.",
+  "Retail-shelf to factory-gate correction. Removing packaging, storage, retail transport and land-use change would lower 21.29 by an unknown amount. The boundary audit flags the direction; no source found lets the size be quantified.",
+  "Purification depth. Food-grade E401 is purified to a specification a film former may not need. Purification is named as a main hotspot, so a technical-grade alginate could sit materially lower.",
+]
+
+[[materials.composition.scope_variants]]
+id         = "sargassum_composite_bioplastic"
+label      = "Sargassum calcium alginate composite bioplastic"
+value      = 4.00
+low        = 4.00
+high       = 5.90
+confidence = "literature"
+comparable = false
+product    = "Calcium alginate COMPOSITE BIOPLASTIC -- a finished blended film, not isolated sodium alginate. The alginate mass fraction of the composite is not established here."
+feedstock  = "Sargassum. UNVERIFIED INFERENCE: Sargassum valorisation studies typically use beach-cast or bloom biomass, a nuisance stream that under cut-off allocation carries little or no upstream burden. If so, a large part of the gap to 21.29 is allocation convention rather than process efficiency. The paper could not be retrieved to confirm this."
+includes   = "Gate-to-gate extraction."
+excludes   = "Per the convention these studies report, drying, milling, equipment manufacture and transport are commonly excluded for consistency with prior work. Seaweed DRYING is separately named as one of the two main hotspots in seaweed LCAs, so this exclusion may omit a hotspot."
+why_not_comparable = "It measures a different product (a finished composite film, not purified alginate), from a different feedstock class (waste vs cultivated), on a narrower boundary, and would sit in the blend as an ingredient when it is already a film. Used as a lower bound it made a four-way scope mismatch look like a single uncertainty range."
+source     = "RSC Green Chem., 2023, 25, 5501: composite calcium alginate bioplastics derived from Sargassum, 4-5.9 kg CO2e/kg bioplastic."
+note       = "Kept visible because it is the only low figure in the alginate literature found, and a reader should see it -- but it cannot bound this input."
+
+[[materials.composition.scope_variants]]
+id         = "alginate_composite_films_multiple"
+label      = "Alginate composite films, as a multiple of PLA/PET"
+value      = 13.50
+low        = 7.00
+high       = 20.00
+confidence = "literature"
+comparable = false
+product    = "Alginate COMPOSITE FILMS, not isolated alginate."
+feedstock  = "Not stated in the retrieved summary."
+includes   = "Cradle-to-gate; impacts attributed mainly to chemical consumption in extraction."
+excludes   = "Not stated."
+why_not_comparable = "Reported only as a ratio (3-7x PLA and PET), so the absolute value depends on which PLA/PET figure it is multiplied by; and it measures a composite film rather than the alginate ingredient. Useful as directional corroboration that alginate extraction is chemical-intensive, not as a number."
+source     = "Reported as 3-7x the impact of PLA and PET films; converted here using PLA/PET at roughly 2-3 kg CO2e/kg."
+note       = "Directional support that purified alginate belongs in the high single figures to low twenties, not at 4."
 
 [[materials.composition]]
 id               = "zein"
@@ -236,11 +274,32 @@ carbon_mass_fraction = 0.5300
 biogenic             = true
 value      = 3.00
 low        = 1.00
-high       = 760.00
+high       = 8.00
 confidence = "placeholder"
 boundary   = "factory_gate"
-source     = "NO CREDIBLE INDUSTRIAL FIGURE FOUND. The only located zein LCA (RSC Green Chem., 2026, 'Life cycle assessment of zein, ethyl lactate, and derivative nanofiltration membranes') reports 760 and 5300 kg CO2e per kg zein for lab-scale solvent extraction routes -- three orders of magnitude above any plausible commercial value, and dominated by solvent use at laboratory scale."
-note       = "Central value is a PROXY, not a measurement: zein is a co-product of corn wet milling, whose corn-derived streams sit near 0.65-1.75 kg CO2e/kg (CarbonCloud corn starch/flour reports), uplifted for the ethanol extraction and drying needed to isolate zein from corn gluten meal. The upper bound of 760 is retained deliberately: it is what the only published number says, and hiding it would misrepresent how unresolved this input is. THIS IS THE WEAKEST INPUT IN THE MODEL."
+source     = "NO INDUSTRIAL FIGURE FOUND. This is a proxy, not a measurement."
+note       = "PROXY: zein is a co-product of corn milling, whose corn-derived streams sit near 0.65-1.75 kg CO2e/kg (CarbonCloud corn starch/flour reports), uplifted for the ethanol extraction and drying needed to isolate zein. The 1.00-8.00 range is ENGINEERING JUDGEMENT for an industrial process with solvent recovery, not a measured or sourced spread -- which is exactly why the tag is `placeholder` and stays that way. The 760 and 5300 lab-scale figures previously used as the upper bound have been moved to a scope variant: they are an accurate measurement of a LABORATORY SOLVENT INVENTORY, not a high estimate of zein, and carrying them in the range put a 239 kg CO2e/kg span on this input that made the sensitivity ranking meaningless."
+unquantified = [
+  "Scale-up factor from laboratory to industrial extraction. The only published zein LCA is lab-scale and solvent-dominated; the gap to an industrial process with closed-loop solvent recovery is orders of magnitude and cannot be estimated from the retrieved summary.",
+  "Co-product allocation of the corn burden. Zein is a minor fraction of corn gluten meal or DDGS, which are themselves co-products of starch or ethanol production. Whether zein carries a share of corn farming (mass or economic allocation) or none at all (residue treated as cut-off) changes the upstream contribution substantially -- though at any industrial figure this is a smaller effect than the scale-up factor.",
+  "Feedstock route. Zein from wet-mill corn gluten meal and zein from dry-mill DDGS are different processes with different yields and purities.",
+]
+
+[[materials.composition.scope_variants]]
+id         = "lab_scale_solvent_extraction"
+label      = "Lab-scale solvent extraction of zein (two routes)"
+value      = 760.00
+low        = 760.00
+high       = 5300.00
+confidence = "literature"
+comparable = false
+product    = "1 kg of zein -- the SAME functional unit as the input above. The divergence is not a boundary or functional-unit mismatch."
+feedstock  = "DDGS (dry-mill ethanol residue)."
+includes   = "Cradle-to-gate laboratory extraction. Impacts overwhelmingly dominated by solvent use; the study's own variables include the solvent management method, i.e. whether solvent is recovered."
+excludes   = "Any industrial solvent recovery loop."
+why_not_comparable = "This is a technology-readiness mismatch, not a scope one. At 760+ essentially the whole figure is laboratory solvent; the corn upstream (at most ~2) is under 0.3% of it. It is an accurate measurement of a bench process and says nothing about an industrial one. Carried as a bound it implied a 239 kg CO2e/kg uncertainty on a 3.00 input."
+source     = "RSC Green Chem., 2026, 'Life cycle assessment of zein, ethyl lactate, and derivative nanofiltration membranes': 760 and 5300 kg CO2e per kg zein for two lab-scale extraction scenarios."
+note       = "The most useful thing this paper gives us is not a number but a hotspot: extraction solvent dominates, so any industrial figure hinges on recovery rate."
 
 [[materials.composition]]
 id               = "stearic_acid"
@@ -350,21 +409,27 @@ text     = "Only the carbon embodied in the film itself is credited. Any wider b
 
 [scenarios.default]
 label       = "As sourced"
-description = "Every value exactly as found. Contains the known boundary mismatch on alginate and stearic acid, so it overstates the biomaterial film."
+description = "Every value as sourced. One known boundary mismatch remains, on alginate, which overstates the biomaterial film by an unquantified amount. Stearic acid was on the same footing until it was replaced with a factory-gate figure."
 
-[scenarios.harmonised_boundary]
-label       = "Harmonised boundary (like-for-like)"
-description = "Replaces the remaining food-database, retail-shelf figure (alginate) with the lowest independently sourced value on a comparable industrial basis. Stearic acid no longer needs an override -- its default is now a factory-gate figure. This scenario is still optimistic for the biomaterial, because the alginate substitute is a lower bound rather than a best estimate; the default is correspondingly pessimistic. The truth is between the two."
+# NOTE: a `harmonised_boundary` scenario was REMOVED here.
+# It substituted the Sargassum figure (4.00) for alginate and presented the
+# result as the like-for-like comparison. That was wrong: 4.00 measures a
+# finished composite bioplastic from a different feedstock class on a narrower
+# boundary, so the scenario was a product mismatch dressed as a boundary
+# correction. Stearic acid, the other half of that scenario, is now a
+# factory-gate figure by default and needs no override. No honest harmonised
+# scenario can be built for alginate until a factory-gate purified-alginate
+# figure exists -- the correction is real but its SIZE is unknown, and inventing
+# one would reintroduce exactly the error this model exists to catch.
+# The Sargassum figure is still reachable, as a declared scope variant, below.
 
-[[scenarios.harmonised_boundary.overrides]]
-path       = "biofilm/component/alginate"
-value      = 4.00
-low        = 4.00
-high       = 5.90
-confidence = "literature"
-boundary   = "factory_gate"
-source     = "Sargassum-derived calcium alginate composite bioplastic, 4-5.9 kg CO2e/kg (RSC Green Chem., 2023, 25, 5501)."
-note       = "Process- and feedstock-specific and measured on a composite bioplastic rather than isolated alginate, so this is a lower bound, not a like-for-like substitute for the CarbonCloud figure."
+[scenarios.sargassum_route]
+label       = "Sargassum composite route (NOT comparable)"
+description = "Swaps in the Sargassum calcium alginate composite bioplastic figure by pulling the declared scope variant. This is NOT a like-for-like comparison and must not be read as one: it measures a finished composite film rather than purified alginate, from a waste-class feedstock, on a boundary that commonly excludes seaweed drying. It exists so the only low figure in the alginate literature stays visible and testable, and so the size of the product mismatch is on screen rather than buried in a note."
+
+[[scenarios.sargassum_route.overrides]]
+path    = "biofilm/component/alginate"
+variant = "sargassum_composite_bioplastic"
 
 
 [scenarios.zein_resolved]

@@ -24,6 +24,7 @@ from .model import (
     Material,
     QualitativeFlag,
     Quantity,
+    ScopeVariant,
 )
 
 DEFAULT_INPUTS = Path(__file__).resolve().parent.parent / "inputs.toml"
@@ -92,6 +93,44 @@ def _require(table: Mapping[str, Any], key: str, where: str) -> Any:
     return table[key]
 
 
+def _scope_variant(table: Mapping[str, Any], where: str) -> ScopeVariant:
+    """Parse an alternative measurement, refusing one that hides its scope.
+
+    A variant declared non-comparable must say WHY. Otherwise the next reader
+    has no way to tell a genuine alternative from a number someone wanted out
+    of the range for the wrong reasons.
+    """
+    variant_id = str(_require(table, "id", where))
+    where = f"{where} variant '{variant_id}'"
+    comparable = bool(table.get("comparable", False))
+    why = str(table.get("why_not_comparable", "")).strip()
+    if not comparable and not why:
+        raise ValueError(
+            f"{where}: comparable=false requires 'why_not_comparable' -- state "
+            f"what this measures instead"
+        )
+    confidence = Confidence.parse(str(_require(table, "confidence", where)))
+    if confidence is Confidence.LITERATURE and not str(table.get("source", "")).strip():
+        raise ValueError(f"{where}: confidence='literature' requires a 'source'")
+
+    return ScopeVariant(
+        id=variant_id,
+        label=str(_require(table, "label", where)),
+        value=float(_require(table, "value", where)),
+        confidence=confidence,
+        product=str(table.get("product", "")).strip(),
+        feedstock=str(table.get("feedstock", "")).strip(),
+        includes=str(table.get("includes", "")).strip(),
+        excludes=str(table.get("excludes", "")).strip(),
+        comparable=comparable,
+        why_not_comparable=why,
+        low=None if table.get("low") is None else float(table["low"]),
+        high=None if table.get("high") is None else float(table["high"]),
+        source=str(table.get("source", "")).strip(),
+        note=str(table.get("note", "")).strip(),
+    )
+
+
 def _quantity(table: Mapping[str, Any], where: str, *, label: str) -> Quantity:
     confidence = Confidence.parse(str(_require(table, "confidence", where)))
     value = float(_require(table, "value", where))
@@ -115,6 +154,25 @@ def _quantity(table: Mapping[str, Any], where: str, *, label: str) -> Quantity:
     if high is not None and high < value:
         raise ValueError(f"{where}: value ({value}) is above high ({high})")
 
+    variants = tuple(
+        _scope_variant(v, where) for v in table.get("scope_variants", [])
+    )
+    # A non-comparable variant must never have leaked into the range.
+    for variant in variants:
+        if variant.comparable:
+            continue
+        if low is not None and abs(low - variant.value) < 1e-9:
+            raise ValueError(
+                f"{where}: low bound {low} is scope variant '{variant.id}', which "
+                f"is declared not comparable -- it measures something else and "
+                f"cannot bound this quantity"
+            )
+        if high is not None and abs(high - variant.value) < 1e-9:
+            raise ValueError(
+                f"{where}: high bound {high} is scope variant '{variant.id}', "
+                f"which is declared not comparable"
+            )
+
     return Quantity(
         label=label,
         value=value,
@@ -126,6 +184,8 @@ def _quantity(table: Mapping[str, Any], where: str, *, label: str) -> Quantity:
         note=str(table.get("note", "")).strip(),
         derivation=derivation,
         overridden_by=str(table.get("overridden_by", "")).strip(),
+        unquantified=tuple(str(u) for u in table.get("unquantified", [])),
+        scope_variants=variants,
     )
 
 
@@ -234,8 +294,40 @@ def _apply_overrides(
     for override in overrides:
         path = str(_require(override, "path", f"scenario '{label}'"))
         target = _resolve_path(raw, path, label)
+
+        # `variant = "<id>"` swaps in a declared scope variant wholesale, so the
+        # scenario cannot drift from the variant it claims to be using.
+        variant_id = override.get("variant")
+        if variant_id is not None:
+            source_variant = next(
+                (
+                    v
+                    for v in target.get("scope_variants", [])
+                    if v.get("id") == variant_id
+                ),
+                None,
+            )
+            if source_variant is None:
+                known = ", ".join(
+                    repr(v.get("id")) for v in target.get("scope_variants", [])
+                ) or "none declared"
+                raise ValueError(
+                    f"scenario '{label}': no scope variant {variant_id!r} on "
+                    f"{path!r}; available: {known}"
+                )
+            for key in ("value", "low", "high", "confidence", "source", "note"):
+                if key in source_variant:
+                    target[key] = source_variant[key]
+            target["note"] = (
+                f"SCOPE VARIANT IN USE ({variant_id}). "
+                f"{source_variant.get('why_not_comparable', '')} "
+                f"{source_variant.get('note', '')}".strip()
+            )
+            # The variant is now the value, so it can no longer bound itself.
+            target["scope_variants"] = []
+
         for key, value in override.items():
-            if key == "path":
+            if key in ("path", "variant"):
                 continue
             target[key] = value
         # Clear any stale bound that the override did not restate, so a new

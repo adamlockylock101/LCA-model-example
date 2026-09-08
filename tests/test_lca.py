@@ -36,7 +36,12 @@ from lca_film.boundary import is_comparable  # noqa: E402
 from lca_film.chart import _axis_peak, render_svg  # noqa: E402
 from lca_film.config import DEFAULT_INPUTS, list_scenarios, load_study  # noqa: E402
 from lca_film.confidence import Confidence, weakest  # noqa: E402
-from lca_film.report import boundary_report, full_report, trace  # noqa: E402
+from lca_film.report import (  # noqa: E402
+    boundary_report,
+    full_report,
+    sensitivity,
+    trace,
+)
 from lca_film.__main__ import main, parse_set  # noqa: E402
 
 # Molar masses, independent of the config file, so the tests are a real check
@@ -312,6 +317,123 @@ class TestStearicAcidDerivation(unittest.TestCase):
         self.assertIn("ecoinvent", self.stearic.footprint.note.lower())
 
 
+class TestScopeVariants(unittest.TestCase):
+    """A different measurement must never be usable as a bound."""
+
+    def setUp(self):
+        self.study = load_study()
+        self.alginate = next(
+            c for c in self.study.material("biofilm").composition if c.id == "alginate"
+        )
+        self.zein = next(
+            c for c in self.study.material("biofilm").composition if c.id == "zein"
+        )
+
+    def test_sargassum_figure_is_a_variant_not_a_bound(self):
+        variant_ids = {v.id for v in self.alginate.footprint.scope_variants}
+        self.assertIn("sargassum_composite_bioplastic", variant_ids)
+        self.assertGreater(self.alginate.footprint.low_or_value, 5.90)
+
+    def test_lab_scale_zein_is_a_variant_not_a_bound(self):
+        variant_ids = {v.id for v in self.zein.footprint.scope_variants}
+        self.assertIn("lab_scale_solvent_extraction", variant_ids)
+        self.assertLess(self.zein.footprint.high_or_value, 100.0)
+
+    def test_the_ranges_that_were_scope_disagreement_have_collapsed(self):
+        """The whole point: parametric spread is now small and meaningful."""
+        self.assertLess(self.alginate.footprint.spread, 1.0)
+        self.assertLess(self.zein.footprint.spread, 10.0)
+
+    def test_every_variant_declares_what_it_measures(self):
+        for component in (self.alginate, self.zein):
+            for variant in component.footprint.scope_variants:
+                self.assertTrue(variant.product, variant.id)
+                self.assertTrue(variant.why_not_comparable, variant.id)
+
+    def test_loader_rejects_a_non_comparable_variant_used_as_a_bound(self):
+        """The guard that stops this regressing."""
+        with self.assertRaisesRegex(ValueError, "cannot bound this quantity"):
+            load_study(overrides=[{"path": "biofilm/component/alginate", "low": 4.00}])
+
+    def test_loader_rejects_a_variant_that_hides_its_scope(self):
+        text = DEFAULT_INPUTS.read_text(encoding="utf-8").replace(
+            'why_not_comparable = "It measures a different product',
+            'skip_this = "It measures a different product',
+            1,
+        )
+        with tempfile.NamedTemporaryFile("w", suffix=".toml", delete=False) as fh:
+            fh.write(text)
+            path = fh.name
+        with self.assertRaisesRegex(ValueError, "requires 'why_not_comparable'"):
+            load_study(path)
+
+    def test_scenario_can_pull_a_variant_and_cannot_drift_from_it(self):
+        study = load_study(scenario="sargassum_route")
+        alginate = next(
+            c for c in study.material("biofilm").composition if c.id == "alginate"
+        )
+        variant = next(
+            v for v in self.alginate.footprint.scope_variants
+            if v.id == "sargassum_composite_bioplastic"
+        )
+        self.assertEqual(alginate.footprint.value, variant.value)
+        self.assertEqual(alginate.footprint.high_or_value, variant.high)
+        self.assertIn("SCOPE VARIANT IN USE", alginate.footprint.note)
+
+    def test_unknown_variant_id_is_rejected_with_the_available_ones(self):
+        with self.assertRaisesRegex(ValueError, "available:"):
+            load_study(
+                overrides=[
+                    {"path": "biofilm/component/zein", "variant": "does_not_exist"}
+                ]
+            )
+
+    def test_variants_reach_the_report(self):
+        text = full_report(self.study)
+        self.assertIn("SCOPE VARIANTS", text)
+        self.assertIn("NOT COMPARABLE", text)
+        self.assertIn("Sargassum", text)
+
+
+class TestUnquantifiedUncertainty(unittest.TestCase):
+    """A narrow range must not be allowed to read as confidence."""
+
+    def setUp(self):
+        self.study = load_study()
+
+    def test_alginate_names_its_unquantified_drivers(self):
+        alginate = next(
+            c for c in self.study.material("biofilm").composition if c.id == "alginate"
+        )
+        drivers = " ".join(alginate.footprint.unquantified).lower()
+        for expected in ("yield", "allocation", "boundary", "purification"):
+            self.assertIn(expected, drivers)
+
+    def test_a_tight_range_is_accompanied_by_named_drivers(self):
+        """Alginate's 0.5-wide range would otherwise imply a settled input."""
+        alginate = next(
+            c for c in self.study.material("biofilm").composition if c.id == "alginate"
+        )
+        self.assertLess(alginate.footprint.spread, 1.0)
+        self.assertGreaterEqual(len(alginate.footprint.unquantified), 3)
+
+    def test_drivers_propagate_to_the_blended_line_item(self):
+        item = raw_material_item(self.study.material("biofilm"))
+        self.assertTrue(item.has_unquantified)
+        self.assertTrue(any("Sodium alginate" in d for d in item.unquantified))
+
+    def test_report_prints_them_and_warns_against_misreading_the_range(self):
+        text = full_report(self.study)
+        self.assertIn("UNQUANTIFIED UNCERTAINTY", text)
+        self.assertIn("UNQUANTIFIED:", text)  # inline, next to the number
+        self.assertIn("does NOT capture", text)
+
+    def test_sensitivity_states_what_it_does_not_rank(self):
+        text = "\n".join(sensitivity(evaluate_all(self.study)))
+        self.assertIn("PARAMETRIC", text)
+        self.assertIn("SCOPE VARIANTS", text)
+
+
 class TestBiogenicBalance(unittest.TestCase):
     """Uptake and release are computed from one carbon number, so they must tie."""
 
@@ -446,32 +568,45 @@ class TestReportOutput(unittest.TestCase):
 class TestSwappability(unittest.TestCase):
     """Inputs must be replaceable without touching calculation code."""
 
-    def test_editing_an_input_moves_the_result_and_upgrades_the_tag(self):
-        text = DEFAULT_INPUTS.read_text(encoding="utf-8")
-
-        # Replace the zein placeholder with a hypothetical sourced figure.
-        patched = text.replace(
-            'value      = 3.00\nlow        = 1.00\nhigh       = 760.00\nconfidence = "placeholder"',
-            'value      = 2.00\nlow        = 1.80\nhigh       = 2.20\n'
-            'confidence = "literature"\nsource_override = true',
-        ).replace(
-            'source     = "NO CREDIBLE INDUSTRIAL FIGURE FOUND.',
-            'source     = "Hypothetical sourced figure for the swap test.',
+    def test_replacing_the_zein_placeholder_narrows_the_result_and_lifts_the_tag(self):
+        swapped = evaluate_all(
+            load_study(
+                overrides=[
+                    {
+                        "path": "biofilm/component/zein",
+                        "value": 2.00,
+                        "low": 1.80,
+                        "high": 2.20,
+                        "confidence": "literature",
+                        "source": "Hypothetical sourced figure, for the swap test only.",
+                    }
+                ]
+            )
         )
-        self.assertNotEqual(text, patched, "patch did not apply; inputs.toml changed shape")
-
-        with tempfile.NamedTemporaryFile("w", suffix=".toml", delete=False) as fh:
-            fh.write(patched)
-            path = fh.name
-
-        swapped = evaluate_all(load_study(path))
-        biofilm_rows = [r for r in swapped if r.material.id == "biofilm"]
-        self.assertTrue(biofilm_rows)
-        # The zein placeholder is gone, so the mass-fraction placeholders are all
-        # that remain -- the flag must persist, and the huge range must collapse.
-        for row in biofilm_rows:
-            self.assertLess(row.total_high, 20.0, row.label)
+        rows = [r for r in swapped if r.material.id == "biofilm"]
+        self.assertTrue(rows)
+        for row in rows:
+            # Zein is no longer a placeholder, but the reconstructed blend
+            # ratios still are, so the flag must survive.
             self.assertTrue(row.is_placeholder_based, row.label)
+            self.assertLess(row.total_high - row.total_low, 3.0, row.label)
+
+    def test_a_scenario_file_can_be_swapped_wholesale(self):
+        """--inputs must accept a different dataset with no code change."""
+        text = DEFAULT_INPUTS.read_text(encoding="utf-8").replace(
+            'value      = 1.80\nlow        = 1.70\nhigh       = 2.00',
+            'value      = 1.20\nlow        = 1.10\nhigh       = 1.30',
+            1,
+        )
+        self.assertNotIn("value      = 1.80", text.split("[[materials.stages]]")[1])
+        with tempfile.NamedTemporaryFile("w", suffix=".toml", delete=False) as fh:
+            fh.write(text)
+            path = fh.name
+        ldpe = next(
+            r for r in evaluate_all(load_study(path))
+            if r.material.id == "ldpe" and r.route.id == "landfill"
+        )
+        self.assertAlmostEqual(ldpe.total, 1.50, places=2)
 
 
 class TestBoundaryTracking(unittest.TestCase):
@@ -521,10 +656,11 @@ class TestBoundaryTracking(unittest.TestCase):
         self.assertIn("BOUNDARY AUDIT", text)
         self.assertIn("OVERSTATES", text)
 
-    def test_harmonised_scenario_clears_the_mismatches(self):
-        harmonised = load_study(scenario="harmonised_boundary")
-        self.assertEqual(harmonised.boundary_issues(), [])
-        self.assertIn("No mismatches", "\n".join(boundary_report(harmonised)))
+    def test_alginate_boundary_mismatch_is_still_open(self):
+        """It cannot be closed by inventing a correction, so it must stay flagged."""
+        labels = {i.input_label for i in self.study.boundary_issues()}
+        self.assertEqual(labels, {"Sodium alginate raw material"})
+        self.assertIn("OVERSTATES", "\n".join(boundary_report(self.study)))
 
 
 class TestScenarios(unittest.TestCase):
@@ -532,7 +668,7 @@ class TestScenarios(unittest.TestCase):
 
     def test_scenarios_are_discoverable(self):
         names = list_scenarios()
-        self.assertIn("harmonised_boundary", names)
+        self.assertIn("sargassum_route", names)
         for spec in names.values():
             self.assertTrue(spec.get("label"))
 
@@ -541,14 +677,12 @@ class TestScenarios(unittest.TestCase):
             load_study(scenario="wishful_thinking")
 
     def test_scenario_changes_the_result(self):
-        default = load_study()
-        harmonised = load_study(scenario="harmonised_boundary")
         before = next(
-            r for r in evaluate_all(default)
+            r for r in evaluate_all(load_study())
             if r.material.id == "biofilm" and r.route.id == "composting"
         )
         after = next(
-            r for r in evaluate_all(harmonised)
+            r for r in evaluate_all(load_study(scenario="sargassum_route"))
             if r.material.id == "biofilm" and r.route.id == "composting"
         )
         self.assertLess(after.total, before.total)
@@ -556,11 +690,11 @@ class TestScenarios(unittest.TestCase):
         self.assertAlmostEqual(after.total, 4.33, places=2)
 
     def test_override_records_which_scenario_set_it(self):
-        harmonised = load_study(scenario="harmonised_boundary")
+        study = load_study(scenario="sargassum_route")
         alginate = next(
-            c for c in harmonised.material("biofilm").composition if c.id == "alginate"
+            c for c in study.material("biofilm").composition if c.id == "alginate"
         )
-        self.assertEqual(alginate.footprint.overridden_by, "harmonised_boundary")
+        self.assertEqual(alginate.footprint.overridden_by, "sargassum_route")
 
     def test_scenario_cannot_smuggle_in_an_unsourced_literature_tag(self):
         """Overrides go through the same validation as authored values."""
@@ -606,7 +740,7 @@ class TestScenarios(unittest.TestCase):
 
     def test_ad_hoc_override_beats_the_scenario_it_layers_on(self):
         study = load_study(
-            scenario="harmonised_boundary",
+            scenario="sargassum_route",
             overrides=[parse_set("biofilm/component/alginate=9.0")],
         )
         alginate = next(
@@ -662,15 +796,24 @@ class TestChartLayout(unittest.TestCase):
         self.assertGreaterEqual(peak, top)
 
     def test_axis_peak_still_covers_merely_wide_ranges(self):
-        harmonised = evaluate_all(load_study(scenario="harmonised_boundary"))
-        peak = _axis_peak(harmonised)
-        on_scale = [r for r in harmonised if not r.is_placeholder_based]
-        for row in on_scale:
+        peak = _axis_peak(self.results)
+        for row in self.results:
             self.assertLessEqual(row.total_high, peak, row.label)
 
-    def test_offscale_rows_state_the_real_number_in_text(self):
+    def test_no_row_is_offscale_once_scope_variants_left_the_ranges(self):
+        """Every range now fits the axis -- that IS the fix, so pin it."""
         svg = render_svg(self.results, "t")
-        self.assertIn("242.31", svg)  # never silently clipped
+        self.assertNotIn('stroke-width="1.8"', svg)  # no chevron drawn
+
+    def test_a_genuinely_huge_range_still_runs_offscale_and_states_its_number(self):
+        """The off-scale machinery must survive, for when a range really is wild."""
+        wild = evaluate_all(
+            load_study(overrides=[{"path": "biofilm/component/zein", "high": 900.0}])
+        )
+        svg = render_svg(wild, "t")
+        self.assertIn('stroke-width="1.8"', svg)
+        biggest = max(r.total_high for r in wild)
+        self.assertIn(f"{biggest:.2f}", svg)  # never silently clipped
 
     def test_svg_height_covers_every_row(self):
         """The last row must not fall off the bottom of the canvas."""
@@ -696,7 +839,7 @@ class TestCli(unittest.TestCase):
             ["--boundaries"],
             ["--sensitivity"],
             ["--trace", "biofilm/composting"],
-            ["--scenario", "harmonised_boundary", "--table"],
+            ["--scenario", "sargassum_route", "--table"],
             ["--set", "biofilm/component/zein=2.0", "--table"],
         ):
             with self.subTest(argv=argv):

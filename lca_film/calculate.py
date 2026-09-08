@@ -40,6 +40,12 @@ class LineItem:
     low: float
     high: float
     note: str = ""
+    unquantified: tuple[str, ...] = ()
+
+    @property
+    def has_unquantified(self) -> bool:
+        """True when low/high does NOT capture everything that could move this."""
+        return bool(self.unquantified)
 
     @property
     def tagged(self) -> str:
@@ -102,6 +108,7 @@ def _item_from_quantity(kind: str, q: Quantity) -> LineItem:
         low=q.low_or_value,
         high=q.high_or_value,
         note=q.note,
+        unquantified=q.unquantified,
     )
 
 
@@ -128,6 +135,11 @@ def raw_material_item(material: Material) -> LineItem:
         f"[{c.footprint.confidence.marker}]"
         for c in material.composition
     )
+    unquantified = tuple(
+        f"{c.name}: {driver}"
+        for c in material.composition
+        for driver in c.footprint.unquantified
+    )
     return LineItem(
         kind="raw",
         label="Raw materials (blend)",
@@ -136,6 +148,7 @@ def raw_material_item(material: Material) -> LineItem:
         low=low,
         high=high,
         note=f"Mass-weighted from the formulation: {breakdown}.",
+        unquantified=unquantified,
     )
 
 

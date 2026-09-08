@@ -83,6 +83,9 @@ def breakdown(results: Sequence[Result]) -> list[str]:
             if item.note:
                 for line in _wrap(item.note, 88):
                     out.append(f"        {line}")
+            for driver in item.unquantified:
+                for line in _wrap(f"UNQUANTIFIED: {driver}", 88):
+                    out.append(f"        {line}")
         total_line = f"{r.total:+.2f} [{r.confidence.marker}]"
         out.append(f"    {'TOTAL':<54} {total_line:>18}   {r.flag}")
         out.append("")
@@ -189,6 +192,16 @@ def sensitivity(results: Sequence[Result]) -> list[str]:
     )
     out.append("effort next: it is the input whose uncertainty dominates the comparison.")
     out.append("")
+    out.append(
+        "This ranks PARAMETRIC spread only -- how much one quantity could vary. "
+        "It does not"
+    )
+    out.append(
+        "rank scope disagreement (see SCOPE VARIANTS) or named drivers that "
+        "carry no range"
+    )
+    out.append("(see UNQUANTIFIED UNCERTAINTY). A short bar here is not a settled input.")
+    out.append("")
     return out
 
 
@@ -217,6 +230,8 @@ def full_report(study: Study, results: Sequence[Result] | None = None) -> str:
         ascii_chart(results),
         breakdown(results),
         sensitivity(results),
+        scope_report(study),
+        unquantified_report(study),
         placeholder_register(results),
         qualitative_flags(study),
     ]
@@ -399,5 +414,114 @@ def scenario_comparison(
     out.append(THIN)
     for study in studies:
         out.append(f"  {study.scenario}: {study.scenario_label}")
+    out.append("")
+    return out
+
+
+def _quantities(study: Study):
+    """Every Quantity in the study, with the material it belongs to."""
+    for material in study.materials:
+        for stage in material.stages:
+            yield material, stage
+        for component in material.composition:
+            yield material, component.footprint
+        for route in material.eol_routes:
+            yield material, route.fossil
+
+
+def scope_report(study: Study) -> list[str]:
+    """Published numbers that measure something OTHER than the input they sit near.
+
+    These used to be folded into low/high, which quietly turned "this source
+    measured a different product" into "we are uncertain by 5x". They are listed
+    here instead, with what each one actually measured, so the difference in
+    kind stays visible.
+    """
+    out = [
+        RULE,
+        "SCOPE VARIANTS  --  other published figures that are NOT this quantity",
+        RULE,
+    ]
+    found = False
+    for material, quantity in _quantities(study):
+        if not quantity.scope_variants:
+            continue
+        found = True
+        out.append(f"  {material.name} -- {quantity.label}")
+        out.append(f"    In use: {quantity.value:.2f} on the {quantity.boundary!r} boundary")
+        out.append("")
+        for variant in quantity.scope_variants:
+            verdict = "COMPARABLE" if variant.comparable else "NOT COMPARABLE"
+            out.append(
+                f"    [{verdict}] {variant.label}: {variant.span} "
+                f"[{variant.confidence.marker}]"
+            )
+            for field, value in (
+                ("product", variant.product),
+                ("feedstock", variant.feedstock),
+                ("includes", variant.includes),
+                ("excludes", variant.excludes),
+            ):
+                if value:
+                    out.append(f"        {field:<10} {value}")
+            if variant.why_not_comparable:
+                for line in _wrap(f"why not a bound: {variant.why_not_comparable}", 84):
+                    out.append(f"        {line}")
+            out.append("")
+        out.append("")
+    if not found:
+        out.append("  None recorded.")
+        out.append("")
+        return out
+    out.append(
+        "  A scope variant is NOT a bound. It is a different measurement, kept "
+        "visible so the"
+    )
+    out.append(
+        "  reader can see what else the literature says without it masquerading "
+        "as uncertainty."
+    )
+    out.append("")
+    return out
+
+
+def unquantified_report(study: Study) -> list[str]:
+    """Uncertainty drivers that are real but carry no number.
+
+    Without this section a narrow low/high reads as confidence. Two sources
+    agreeing to within 2% says they agree; it does not say the quantity is known
+    to within 2%, and where the reasons for that are known they are named here.
+    """
+    out = [
+        RULE,
+        "UNQUANTIFIED UNCERTAINTY  --  real drivers that low/high does NOT capture",
+        RULE,
+    ]
+    found = False
+    for material, quantity in _quantities(study):
+        if not quantity.unquantified:
+            continue
+        found = True
+        spread = quantity.high_or_value - quantity.low_or_value
+        out.append(
+            f"  {material.name} -- {quantity.label}  "
+            f"({quantity.value:.2f}, stated range width {spread:.2f})"
+        )
+        for driver in quantity.unquantified:
+            for index, line in enumerate(_wrap(driver, 88)):
+                out.append(f"      {'- ' if index == 0 else '  '}{line}")
+        out.append("")
+    if not found:
+        out.append("  None recorded.")
+        out.append("")
+        return out
+    out.append(
+        "  Do NOT read a narrow range on these inputs as a small uncertainty. "
+        "The range covers"
+    )
+    out.append(
+        "  what the sources disagree about; the drivers above are what none of "
+        "them pins down."
+    )
     out.append("")
     return out

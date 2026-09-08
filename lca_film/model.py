@@ -14,6 +14,42 @@ from .confidence import Confidence, weakest
 
 
 @dataclass(frozen=True)
+class ScopeVariant:
+    """An alternative published measurement that is NOT the same quantity.
+
+    The distinction this type exists to enforce: a `low`/`high` range says "we
+    are unsure how big this thing is". A scope variant says "this other number
+    measures a DIFFERENT thing". Collapsing the second into the first turns a
+    category error into a confidence interval, which reads as rigour and is the
+    opposite of it.
+
+    A variant with ``comparable = False`` may never be used as a bound on the
+    parent quantity. It is reported alongside, with its scope spelled out.
+    """
+
+    id: str
+    label: str
+    value: float
+    confidence: Confidence
+    product: str = ""
+    feedstock: str = ""
+    includes: str = ""
+    excludes: str = ""
+    comparable: bool = False
+    why_not_comparable: str = ""
+    low: Optional[float] = None
+    high: Optional[float] = None
+    source: str = ""
+    note: str = ""
+
+    @property
+    def span(self) -> str:
+        if self.low is None or self.high is None:
+            return f"{self.value:.2f}"
+        return f"{self.low:.2f}-{self.high:.2f}"
+
+
+@dataclass(frozen=True)
 class Quantity:
     """A single tagged number: a value, its confidence, its boundary, its source.
 
@@ -32,6 +68,12 @@ class Quantity:
     note: str = ""
     derivation: str = ""
     overridden_by: str = ""
+    #: Named uncertainty drivers that are real but NOT captured by low/high.
+    #: Without these, two sources agreeing closely produces a narrow range that
+    #: reads as confidence when the agreement may be coincidental.
+    unquantified: tuple[str, ...] = ()
+    #: Other published numbers that measure something different. Never bounds.
+    scope_variants: tuple[ScopeVariant, ...] = ()
 
     @property
     def low_or_value(self) -> float:
