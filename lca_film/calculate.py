@@ -83,9 +83,28 @@ class Result:
         return bool(self.placeholder_items)
 
     @property
+    def unverified_items(self) -> list[LineItem]:
+        return [i for i in self.items if i.confidence.is_unverified]
+
+    @property
+    def is_unverified_based(self) -> bool:
+        """True when any input cannot be checked against an external record."""
+        return bool(self.unverified_items)
+
+    @property
     def flag(self) -> str:
-        """The visible warning that rides alongside every placeholder result."""
-        return "!! PLACEHOLDER-BASED" if self.is_placeholder_based else ""
+        """The visible warning that rides alongside every unverifiable result.
+
+        Two levels, because they mean different things. A placeholder is a
+        stand-in for a number nobody has. A recalled value is a real statement
+        about this specific film that simply cannot be audited. Both make a
+        result unverifiable; only the first means the number is invented.
+        """
+        if self.is_placeholder_based:
+            return "!! PLACEHOLDER-BASED"
+        if self.is_unverified_based:
+            return "! RECALLED INPUT"
+        return ""
 
     @property
     def route_label(self) -> str:

@@ -26,7 +26,7 @@
 <text class="t-title" x="24" y="32">Cradle-to-grave GHG comparison: sanitary product anti-leak film</text>
 <text class="t-sub" x="24" y="54">Cradle-to-grave kg CO2e per kg of film material. Bars are central values; whiskers span the input ranges.</text>
 <text class="t-sub" x="24" y="72">Scenario: <tspan font-weight="600">Sargassum composite route (NOT comparable)</tspan></text>
-<text class="t-alert" x="24" y="92">Hatched bars with a red outline are PLACEHOLDER-BASED: at least one input has no source. Not comparable at face value.</text>
+<text class="t-alert" x="24" y="92">Hatched bars carry an input that cannot be checked against an external record - see the tag on each value. Not comparable at face value.</text>
 <rect x="24.0" y="106" width="10" height="10" rx="2" fill="var(--s-ldpe, #2a78d6)"/>
 <text class="t-sub" x="40.0" y="115">LDPE</text>
 <rect x="94.0" y="106" width="10" height="10" rx="2" fill="var(--s-pva, #eb6834)"/>
@@ -35,69 +35,69 @@
 <text class="t-sub" x="173.0" y="115">Biomaterial film</text>
 <line class="grid" x1="250.0" y1="134" x2="250.0" y2="528"/>
 <text class="t-sub" x="250.0" y="546" text-anchor="middle">0</text>
-<line class="grid" x1="369.3" y1="134" x2="369.3" y2="528"/>
-<text class="t-sub" x="369.3" y="546" text-anchor="middle">2</text>
-<line class="grid" x1="488.7" y1="134" x2="488.7" y2="528"/>
-<text class="t-sub" x="488.7" y="546" text-anchor="middle">4</text>
-<line class="grid" x1="608.0" y1="134" x2="608.0" y2="528"/>
-<text class="t-sub" x="608.0" y="546" text-anchor="middle">6</text>
-<line class="grid" x1="727.4" y1="134" x2="727.4" y2="528"/>
-<text class="t-sub" x="727.4" y="546" text-anchor="middle">8</text>
+<line class="grid" x1="375.4" y1="134" x2="375.4" y2="528"/>
+<text class="t-sub" x="375.4" y="546" text-anchor="middle">2</text>
+<line class="grid" x1="500.8" y1="134" x2="500.8" y2="528"/>
+<text class="t-sub" x="500.8" y="546" text-anchor="middle">4</text>
+<line class="grid" x1="626.2" y1="134" x2="626.2" y2="528"/>
+<text class="t-sub" x="626.2" y="546" text-anchor="middle">6</text>
+<line class="grid" x1="751.7" y1="134" x2="751.7" y2="528"/>
+<text class="t-sub" x="751.7" y="546" text-anchor="middle">8</text>
 <text class="t-muted" x="520" y="562" text-anchor="middle">kg CO2e per kg</text>
 <text class="t-row" x="24" y="162.0" font-weight="700">LDPE</text>
 <text class="t-row" x="236" y="186.0" text-anchor="end" fill="var(--ink-2)">Incineration</text>
-<rect x="250" y="172.0" width="295.4" height="20" rx="4" fill="var(--s-ldpe, #2a78d6)"/>
-<line class="whisker" x1="527.5" y1="182.0" x2="580.6" y2="182.0"/><line class="whisker" x1="527.5" y1="177.0" x2="527.5" y2="187.0"/>
-<line class="whisker" x1="580.6" y1="177.0" x2="580.6" y2="187.0"/>
+<rect x="250" y="172.0" width="310.4" height="20" rx="4" fill="var(--s-ldpe, #2a78d6)"/>
+<line class="whisker" x1="541.6" y1="182.0" x2="597.4" y2="182.0"/><line class="whisker" x1="541.6" y1="177.0" x2="541.6" y2="187.0"/>
+<line class="whisker" x1="597.4" y1="177.0" x2="597.4" y2="187.0"/>
 <text class="t-val" x="816" y="181.0">4.95<tspan class="t-tag" dx="6">[EST]</tspan></text>
 <text class="t-muted" x="816" y="194.0" font-size="10.5" font-weight="400">range 4.65 to 5.54</text>
 <text class="t-row" x="236" y="220.0" text-anchor="end" fill="var(--ink-2)">Landfill</text>
-<rect x="250" y="206.0" width="125.3" height="20" rx="4" fill="var(--s-ldpe, #2a78d6)"/>
-<line class="whisker" x1="361.0" y1="216.0" x2="399.2" y2="216.0"/><line class="whisker" x1="361.0" y1="211.0" x2="361.0" y2="221.0"/>
-<line class="whisker" x1="399.2" y1="211.0" x2="399.2" y2="221.0"/>
+<rect x="250" y="206.0" width="131.7" height="20" rx="4" fill="var(--s-ldpe, #2a78d6)"/>
+<line class="whisker" x1="366.6" y1="216.0" x2="406.8" y2="216.0"/><line class="whisker" x1="366.6" y1="211.0" x2="366.6" y2="221.0"/>
+<line class="whisker" x1="406.8" y1="211.0" x2="406.8" y2="221.0"/>
 <text class="t-val" x="816" y="215.0">2.10<tspan class="t-tag" dx="6">[EST]</tspan></text>
 <text class="t-muted" x="816" y="228.0" font-size="10.5" font-weight="400">range 1.86 to 2.50</text>
 <line class="rule" x1="24" y1="246.0" x2="1046" y2="246.0"/>
 <text class="t-row" x="24" y="264.0" font-weight="700">PVA (polyvinyl alcohol)</text>
 <text class="t-row" x="236" y="288.0" text-anchor="end" fill="var(--ink-2)">biodegradation (aqueous)</text>
-<rect x="250" y="274.0" width="278.1" height="20" rx="4" fill="var(--s-pva, #eb6834)"/>
-<line class="whisker" x1="426.6" y1="284.0" x2="599.1" y2="284.0"/><line class="whisker" x1="426.6" y1="279.0" x2="426.6" y2="289.0"/>
-<line class="whisker" x1="599.1" y1="279.0" x2="599.1" y2="289.0"/>
+<rect x="250" y="274.0" width="292.2" height="20" rx="4" fill="var(--s-pva, #eb6834)"/>
+<line class="whisker" x1="435.6" y1="284.0" x2="616.8" y2="284.0"/><line class="whisker" x1="435.6" y1="279.0" x2="435.6" y2="289.0"/>
+<line class="whisker" x1="616.8" y1="279.0" x2="616.8" y2="289.0"/>
 <text class="t-val" x="816" y="283.0">4.66<tspan class="t-tag" dx="6">[EST]</tspan></text>
 <text class="t-muted" x="816" y="296.0" font-size="10.5" font-weight="400">range 2.96 to 5.85</text>
 <text class="t-row" x="236" y="322.0" text-anchor="end" fill="var(--ink-2)">incineration</text>
-<rect x="250" y="308.0" width="278.1" height="20" rx="4" fill="var(--s-pva, #eb6834)"/>
-<line class="whisker" x1="512.6" y1="318.0" x2="599.1" y2="318.0"/><line class="whisker" x1="512.6" y1="313.0" x2="512.6" y2="323.0"/>
-<line class="whisker" x1="599.1" y1="313.0" x2="599.1" y2="323.0"/>
+<rect x="250" y="308.0" width="292.2" height="20" rx="4" fill="var(--s-pva, #eb6834)"/>
+<line class="whisker" x1="525.9" y1="318.0" x2="616.8" y2="318.0"/><line class="whisker" x1="525.9" y1="313.0" x2="525.9" y2="323.0"/>
+<line class="whisker" x1="616.8" y1="313.0" x2="616.8" y2="323.0"/>
 <text class="t-val" x="816" y="317.0">4.66<tspan class="t-tag" dx="6">[EST]</tspan></text>
 <text class="t-muted" x="816" y="330.0" font-size="10.5" font-weight="400">range 4.40 to 5.85</text>
 <text class="t-row" x="236" y="356.0" text-anchor="end" fill="var(--ink-2)">landfill</text>
-<rect x="250" y="342.0" width="164.7" height="20" rx="4" fill="var(--s-pva, #eb6834)"/>
-<line class="whisker" x1="404.0" y1="352.0" x2="497.6" y2="352.0"/><line class="whisker" x1="404.0" y1="347.0" x2="404.0" y2="357.0"/>
-<line class="whisker" x1="497.6" y1="347.0" x2="497.6" y2="357.0"/>
+<rect x="250" y="342.0" width="173.1" height="20" rx="4" fill="var(--s-pva, #eb6834)"/>
+<line class="whisker" x1="411.8" y1="352.0" x2="510.2" y2="352.0"/><line class="whisker" x1="411.8" y1="347.0" x2="411.8" y2="357.0"/>
+<line class="whisker" x1="510.2" y1="347.0" x2="510.2" y2="357.0"/>
 <text class="t-val" x="816" y="351.0">2.76<tspan class="t-tag" dx="6">[EST]</tspan></text>
 <text class="t-muted" x="816" y="364.0" font-size="10.5" font-weight="400">range 2.58 to 4.15</text>
 <line class="rule" x1="24" y1="382.0" x2="1046" y2="382.0"/>
 <text class="t-row" x="24" y="400.0" font-weight="700">Biomaterial film (alginate / zein / stearic acid)</text>
 <text class="t-row" x="236" y="424.0" text-anchor="end" fill="var(--ink-2)">industrial composting</text>
-<rect x="250" y="410.0" width="354.8" height="20" rx="4" fill="var(--s-biofilm, #1baf7a)"/>
-<rect x="250" y="410.0" width="354.8" height="20" rx="4" fill="url(#ph)"/><rect class="flagged" x="250" y="410.0" width="354.8" height="20" rx="4"/>
-<line class="whisker" x1="554.1" y1="420.0" x2="739.0" y2="420.0"/><line class="whisker" x1="554.1" y1="415.0" x2="554.1" y2="425.0"/>
-<line class="whisker" x1="739.0" y1="415.0" x2="739.0" y2="425.0"/>
-<text class="t-val" x="816" y="419.0">5.95<tspan class="t-tag" dx="6">[PLACEHOLDER]</tspan></text>
-<text class="t-muted" x="816" y="432.0" font-size="10.5" font-weight="400">range 5.10 to 8.19</text>
+<rect x="250" y="410.0" width="352.2" height="20" rx="4" fill="var(--s-biofilm, #1baf7a)"/>
+<rect x="250" y="410.0" width="352.2" height="20" rx="4" fill="url(#ph)"/><rect class="flagged" x="250" y="410.0" width="352.2" height="20" rx="4"/>
+<line class="whisker" x1="553.4" y1="420.0" x2="736.1" y2="420.0"/><line class="whisker" x1="553.4" y1="415.0" x2="553.4" y2="425.0"/>
+<line class="whisker" x1="736.1" y1="415.0" x2="736.1" y2="425.0"/>
+<text class="t-val" x="816" y="419.0">5.62<tspan class="t-tag" dx="6">[RECALLED]</tspan></text>
+<text class="t-muted" x="816" y="432.0" font-size="10.5" font-weight="400">range 4.84 to 7.75</text>
 <text class="t-row" x="236" y="458.0" text-anchor="end" fill="var(--ink-2)">landfill</text>
-<rect x="250" y="444.0" width="378.2" height="20" rx="4" fill="var(--s-biofilm, #1baf7a)"/>
-<rect x="250" y="444.0" width="378.2" height="20" rx="4" fill="url(#ph)"/><rect class="flagged" x="250" y="444.0" width="378.2" height="20" rx="4"/>
-<line class="whisker" x1="578.7" y1="454.0" x2="759.4" y2="454.0"/><line class="whisker" x1="578.7" y1="449.0" x2="578.7" y2="459.0"/>
+<rect x="250" y="444.0" width="378.7" height="20" rx="4" fill="var(--s-biofilm, #1baf7a)"/>
+<rect x="250" y="444.0" width="378.7" height="20" rx="4" fill="url(#ph)"/><rect class="flagged" x="250" y="444.0" width="378.7" height="20" rx="4"/>
+<line class="whisker" x1="581.2" y1="454.0" x2="759.4" y2="454.0"/><line class="whisker" x1="581.2" y1="449.0" x2="581.2" y2="459.0"/>
 <line class="whisker" x1="759.4" y1="449.0" x2="759.4" y2="459.0"/>
-<text class="t-val" x="816" y="453.0">6.34<tspan class="t-tag" dx="6">[PLACEHOLDER]</tspan></text>
-<text class="t-muted" x="816" y="466.0" font-size="10.5" font-weight="400">range 5.51 to 8.54</text>
+<text class="t-val" x="816" y="453.0">6.04<tspan class="t-tag" dx="6">[RECALLED]</tspan></text>
+<text class="t-muted" x="816" y="466.0" font-size="10.5" font-weight="400">range 5.28 to 8.12</text>
 <text class="t-row" x="236" y="492.0" text-anchor="end" fill="var(--ink-2)">incineration</text>
-<rect x="250" y="478.0" width="340.1" height="20" rx="4" fill="var(--s-biofilm, #1baf7a)"/>
-<rect x="250" y="478.0" width="340.1" height="20" rx="4" fill="url(#ph)"/><rect class="flagged" x="250" y="478.0" width="340.1" height="20" rx="4"/>
-<line class="whisker" x1="540.7" y1="488.0" x2="721.4" y2="488.0"/><line class="whisker" x1="540.7" y1="483.0" x2="540.7" y2="493.0"/>
-<line class="whisker" x1="721.4" y1="483.0" x2="721.4" y2="493.0"/>
-<text class="t-val" x="816" y="487.0">5.70<tspan class="t-tag" dx="6">[PLACEHOLDER]</tspan></text>
-<text class="t-muted" x="816" y="500.0" font-size="10.5" font-weight="400">range 4.87 to 7.90</text>
+<rect x="250" y="478.0" width="335.9" height="20" rx="4" fill="var(--s-biofilm, #1baf7a)"/>
+<rect x="250" y="478.0" width="335.9" height="20" rx="4" fill="url(#ph)"/><rect class="flagged" x="250" y="478.0" width="335.9" height="20" rx="4"/>
+<line class="whisker" x1="538.4" y1="488.0" x2="716.7" y2="488.0"/><line class="whisker" x1="538.4" y1="483.0" x2="538.4" y2="493.0"/>
+<line class="whisker" x1="716.7" y1="483.0" x2="716.7" y2="493.0"/>
+<text class="t-val" x="816" y="487.0">5.36<tspan class="t-tag" dx="6">[RECALLED]</tspan></text>
+<text class="t-muted" x="816" y="500.0" font-size="10.5" font-weight="400">range 4.60 to 7.44</text>
 </svg>

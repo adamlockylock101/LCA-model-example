@@ -200,6 +200,9 @@ def _component(table: Mapping[str, Any], where: str) -> Component:
     return Component(
         id=str(table.get("id", name.lower().replace(" ", "_"))),
         name=name,
+        dry_mass_g=(
+            None if table.get("dry_mass_g") is None else float(table["dry_mass_g"])
+        ),
         mass_fraction=fraction,
         footprint=_quantity(table, f"{where} ({name})", label=f"{name} raw material"),
         carbon_mass_fraction=float(_require(table, "carbon_mass_fraction", where)),
@@ -237,9 +240,34 @@ def _eol_route(table: Mapping[str, Any], where: str) -> EndOfLifeRoute:
     )
 
 
+def _normalise_dry_masses(table: Mapping[str, Any], where: str) -> None:
+    """Turn a recalled recipe in grams into mass fractions, in place.
+
+    Recording the recipe as it was actually given -- 0.8 g, 0.3 g, 0.3 g -- and
+    normalising here keeps the primary record intact and avoids hand-rounded
+    percentages that fail the sum-to-one check or silently shift the blend.
+    Solvents are excluded by construction: only dry-film components are listed.
+    """
+    entries = table.get("composition", [])
+    with_mass = [e for e in entries if "dry_mass_g" in e]
+    if not with_mass:
+        return
+    if len(with_mass) != len(entries):
+        raise ValueError(
+            f"{where}: composition mixes 'dry_mass_g' and 'mass_fraction'; "
+            f"use one basis for the whole blend"
+        )
+    total = sum(float(e["dry_mass_g"]) for e in entries)
+    if total <= 0:
+        raise ValueError(f"{where}: dry masses sum to {total}, expected a positive mass")
+    for entry in entries:
+        entry["mass_fraction"] = float(entry["dry_mass_g"]) / total
+
+
 def _material(table: Mapping[str, Any]) -> Material:
     material_id = str(_require(table, "id", "material"))
     where = f"material '{material_id}'"
+    _normalise_dry_masses(table, where)
 
     stages = tuple(
         _quantity(s, f"{where} stage", label=str(_require(s, "label", f"{where} stage")))

@@ -107,6 +107,8 @@ class Component:
     footprint: Quantity
     carbon_mass_fraction: float
     biogenic: bool
+    #: The recalled recipe mass, where the blend was given in grams.
+    dry_mass_g: Optional[float] = None
 
 
 @dataclass(frozen=True)

@@ -518,10 +518,18 @@ class TestPlaceholderFlagging(unittest.TestCase):
         self.results = evaluate_all(self.study)
 
     def test_biofilm_results_are_flagged(self):
+        """The blend is recalled, not recorded, so results stay marked."""
         for result in self.results:
             if result.material.id == "biofilm":
-                self.assertTrue(result.is_placeholder_based, result.label)
-                self.assertIn("PLACEHOLDER", result.flag)
+                self.assertTrue(result.is_unverified_based, result.label)
+                self.assertIn("RECALLED", result.flag)
+
+    def test_recalled_is_distinguished_from_placeholder(self):
+        """Both are unverifiable; only one means the number is invented."""
+        for result in self.results:
+            if result.material.id == "biofilm":
+                self.assertFalse(result.is_placeholder_based, result.label)
+                self.assertNotIn("PLACEHOLDER", result.flag)
 
     def test_result_confidence_is_the_weakest_input(self):
         for result in self.results:
@@ -537,12 +545,13 @@ class TestPlaceholderFlagging(unittest.TestCase):
         """
         biofilm = self.study.material("biofilm")
         item = raw_material_item(biofilm)
-        self.assertTrue(item.confidence.is_placeholder)
+        self.assertIs(item.confidence, Confidence.RECALLED)
         self.assertFalse(
-            any(c.footprint.confidence.is_placeholder for c in biofilm.composition)
+            any(c.footprint.confidence.is_unverified for c in biofilm.composition)
         )
         self.assertTrue(
-            any(c.mass_fraction.confidence.is_placeholder for c in biofilm.composition)
+            all(c.mass_fraction.confidence is Confidence.RECALLED
+                for c in biofilm.composition)
         )
 
     def test_no_placeholder_means_no_flag(self):
@@ -567,7 +576,7 @@ class TestReportOutput(unittest.TestCase):
         self.assertIn("PLACEHOLDER-BASED", self.text)
 
     def test_report_lists_the_placeholder_register(self):
-        self.assertIn("PLACEHOLDER REGISTER", self.text)
+        self.assertIn("UNVERIFIABLE INPUTS", self.text)
 
     def test_qualitative_flags_reach_the_report(self):
         """Impacts with no number must still be printed with the results."""
@@ -583,7 +592,7 @@ class TestReportOutput(unittest.TestCase):
         self.assertTrue(svg.startswith("<svg"))
         self.assertTrue(svg.rstrip().endswith("</svg>"))
         self.assertIn("url(#ph)", svg)  # hatching applied to a flagged bar
-        self.assertIn("PLACEHOLDER-BASED", svg)
+        self.assertIn("cannot be checked against an external record", svg)
 
 
 class TestSwappability(unittest.TestCase):
@@ -616,9 +625,9 @@ class TestSwappability(unittest.TestCase):
             self.assertLess(
                 row.total_high - row.total_low, baseline[row.route.id], row.label
             )
-            # ...but the reconstructed blend ratios are still unsourced, so the
-            # flag must survive a component being upgraded.
-            self.assertTrue(row.is_placeholder_based, row.label)
+            # ...but the blend ratios are recalled, not recorded, so the flag
+            # must survive a component being upgraded.
+            self.assertTrue(row.is_unverified_based, row.label)
 
     def test_a_scenario_file_can_be_swapped_wholesale(self):
         """--inputs must accept a different dataset with no code change."""
@@ -715,8 +724,8 @@ class TestScenarios(unittest.TestCase):
             if r.material.id == "biofilm" and r.route.id == "composting"
         )
         self.assertLess(after.total, before.total)
-        self.assertAlmostEqual(before.total, 16.32, places=2)
-        self.assertAlmostEqual(after.total, 5.95, places=2)
+        self.assertAlmostEqual(before.total, 15.50, places=2)
+        self.assertAlmostEqual(after.total, 5.62, places=2)
 
     def test_override_records_which_scenario_set_it(self):
         study = load_study(scenario="sargassum_route")
@@ -789,15 +798,16 @@ class TestTrace(unittest.TestCase):
     def test_trace_shows_the_blend_arithmetic(self):
         self.assertIn("Sodium alginate", self.text)
         self.assertIn("21.29", self.text)
-        self.assertIn("12.7740", self.text)  # 0.60 x 21.29
+        self.assertIn("12.1657", self.text)  # 0.8/1.4 x 21.29
+        self.assertIn("0.8", self.text)  # the recalled recipe mass, in grams
 
     def test_trace_shows_the_biogenic_credit_being_applied(self):
         self.assertIn("Biogenic carbon credit", self.text)
-        self.assertIn("-1.6608", self.text)
+        self.assertIn("-1.7746", self.text)
         self.assertIn("Credit applied at uptake", self.text)
 
     def test_trace_running_total_reaches_the_reported_total(self):
-        self.assertIn("16.3200", self.text)
+        self.assertIn("15.4966", self.text)
 
     def test_trace_reports_boundary_of_each_component(self):
         self.assertIn("retail_shelf", self.text)

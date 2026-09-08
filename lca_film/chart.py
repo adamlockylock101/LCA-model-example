@@ -131,9 +131,9 @@ def render_svg(
             f"<tspan font-weight=\"600\">{_esc(scenario)}</tspan></text>"
         )
     p.append(
-        '<text class="t-alert" x="24" y="92">Hatched bars with a red outline are '
-        "PLACEHOLDER-BASED: at least one input has no source. Not comparable at "
-        "face value.</text>"
+        '<text class="t-alert" x="24" y="92">Hatched bars carry an input that '
+        "cannot be checked against an external record - see the tag on each "
+        "value. Not comparable at face value.</text>"
     )
 
     # Legend: identity is never carried by colour alone, but a legend is still
@@ -204,7 +204,7 @@ def render_svg(
                 f'<rect x="{PAD_LEFT}" y="{y:.1f}" width="{bar_w:.1f}" '
                 f'height="{BAR_H}" rx="4" fill="var({var}, {fallback})"/>'
             )
-            if row.is_placeholder_based:
+            if row.is_unverified_based:
                 p.append(
                     f'<rect x="{PAD_LEFT}" y="{y:.1f}" width="{bar_w:.1f}" '
                     f'height="{BAR_H}" rx="4" fill="url(#ph)"/>'

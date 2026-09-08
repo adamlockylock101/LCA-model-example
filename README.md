@@ -34,7 +34,7 @@ python3 -m lca_film --placeholders                    # what still needs a sourc
 python3 -m lca_film --svg out/chart.svg --csv out.csv # artefacts
 python3 -m lca_film --inputs mine.toml                # a different dataset
 
-python3 -m unittest discover -s tests                 # 87 tests
+python3 -m unittest discover -s tests                 # 88 tests
 ```
 
 Change one input without touching the file:
@@ -51,6 +51,30 @@ number typed at a shell prompt has no source behind it, and the flag says so.
 Overrides are applied to the raw input tables *before* validation, so a scenario
 cannot smuggle in a `literature` tag with no citation.
 
+## Changing the inputs
+
+All numbers live in `inputs.toml`. Nothing in `lca_film/` needs editing to
+change a value, a formulation, an end-of-life route or a scenario.
+
+**The blend is stored as the recipe, in grams**, not as percentages:
+
+```toml
+[[materials.composition]]
+id              = "alginate"
+component       = "Sodium alginate"
+dry_mass_g      = 0.8          # <- the recalled recipe
+frac_confidence = "recalled"
+```
+
+The model normalises the grams, so hand-rounded percentages can never fail the
+sum-to-one check or silently shift the blend — 57/21/21 sums to 99, the grams
+do not have that problem. Solvents are excluded by construction: the water and
+ethanol in the recipe evaporate during dehydration, so they carry no dry-film
+mass and appear in the **processing** stage instead, not as blend components.
+
+The biogenic carbon credit recomputes itself from the new carbon content
+whenever the blend changes, and so does the end-of-life release that mirrors it.
+
 ## Results
 
 Two scenarios, because the honest answer depends on a sourcing decision:
@@ -62,10 +86,10 @@ LDPE        -- landfill                   2.10   1.86- 2.50             2.10
 PVA         -- biodegradation (aqueous)   4.66   2.96- 5.85             4.66
 PVA         -- incineration               4.66   4.40- 5.85             4.66
 PVA         -- landfill                   2.76   2.58- 4.15             2.76
-Biomaterial -- industrial composting     16.32 !! 10.86-18.33           5.95 !!
-Biomaterial -- landfill                  16.71 !! 11.27-18.67           6.34 !!
-Biomaterial -- incineration              16.07 !! 10.63-18.03           5.70 !!
-                                         !! = placeholder-based
+Biomaterial -- industrial composting     15.50 !  10.32-17.40           5.62 !
+Biomaterial -- landfill                  15.92 !  10.77-17.78           6.03 !
+Biomaterial -- incineration              15.24 !  10.08-17.09           5.36 !
+                                         !  = recalled input (unverifiable)
 ```
 
 The biomaterial range was **3.49–242.90** before scope variants were separated
@@ -112,9 +136,9 @@ settled input, and the report says so.
 
 ### What the model says
 
-1. **The biogenic carbon credit is applied, and it is small.** −1.66 kg CO2e/kg,
-   computed from the blend's actual 45.3% carbon content. Even at its most
-   favourable it cannot offset a raw-material burden of 3.6–14.8.
+1. **The biogenic carbon credit is applied, and it is small.** −1.77 kg CO2e/kg,
+   computed from the blend's actual 48.4% carbon content. Even at its most
+   favourable it cannot offset a raw-material burden of ~14.9.
 2. **Alginate dominates, and it is genuinely high-impact.** The two sources that
    measure purified alginate agree closely: CarbonCloud 21.29 and a seaweed
    biorefinery at ~20.8 unallocated. Seaweed drying and extraction chemistry are
@@ -140,7 +164,17 @@ Printed with every number, never in a separate notes section.
 | `LIT` | Literature-backed | A `source` is **required**, or loading fails |
 | `DER` | Derived by calculation | A `derivation` is **required**; tests re-derive the value from molar masses |
 | `EST` | Industry-typical estimate | Defensible order of magnitude, not traced |
+| `RECALLED` | Recalled from memory, not a record | Any result consuming one is flagged `! RECALLED INPUT` |
 | `PLACEHOLDER` | No credible figure found | Any result consuming one is flagged `!! PLACEHOLDER-BASED` |
+
+`RECALLED` ranks *below* `EST` on purpose. A recollection of the actual
+formulation is more **relevant** than a generic industry figure but less
+**verifiable**, and for a model whose job is defensibility, verifiability is
+what has to drive the ranking. It is kept distinct from `PLACEHOLDER` because
+the two mean different things: a placeholder is a stand-in for a number nobody
+has; a recalled value is a real statement about this specific film that simply
+cannot be audited. Both make a result unverifiable; only one means the number
+is invented.
 
 A result takes the **weakest** tag of its inputs, so one unsourced blend
 component taints the blended figure and every total built on it. In the chart,
@@ -160,25 +194,30 @@ is the more dangerous failure because nothing looks broken.
 $ python3 -m lca_film --trace biofilm/composting
 
 STEP 1. Raw materials, built up from the formulation
-  Component              Mass  x  kg CO2e/kg  =  Contribution  Tag           Boundary
-  Sodium alginate        0.60  x       21.29  =       12.7740  [LIT]         retail_shelf
-  Zein                   0.30  x        3.00  =        0.9000  [PLACEHOLDER] factory_gate
-  Stearic acid           0.10  x       11.20  =        1.1200  [LIT]         retail_shelf
-  Raw material subtotal                                14.7940
+  Component           Dry g    Frac  kg CO2e/kg  Contribution  Range width  Tag
+  Sodium alginate       0.8  0.5714       21.29       12.1657       5.2514  [LIT]
+  Zein                  0.3  0.2143        8.40        1.8000       0.8700  [DER]
+  Stearic acid          0.3  0.2143        4.30        0.9214       0.4071  [DER]
+  Raw material subtotal                                14.8871       6.5286
 
 STEP 2. Full account
-  1. Raw materials (blend)                    +14.7940  running total  +14.7940
-  2. Processing (casting + dehydration)        +0.3000  running total  +15.0940
-  3. Biogenic carbon credit (uptake)           -1.6608  running total  +13.4332
-  4. End of life: industrial composting        +0.1000  running total  +13.5332
-  5. End of life: biogenic carbon released     +1.8568  running total  +15.3900
-  TOTAL                                       +15.3900  !! PLACEHOLDER-BASED
+  1. Raw materials (blend)                    +14.8871  running total  +14.8871
+  2. Processing (casting + dehydration)        +0.3000  running total  +15.1871
+  3. Biogenic carbon credit (uptake)           -1.7746  running total  +13.4126
+  4. End of life: industrial composting        +0.1000  running total  +13.5126
+  5. End of life: biogenic carbon released     +1.9840  running total  +15.4966
+  TOTAL                                       +15.4966  ! RECALLED INPUT
 
 STEP 3. Biogenic carbon check
-  Credit applied at uptake          -1.6608
-  Returned at end of life           +1.8568
-  Net biogenic carbon               +0.1960
+  Credit applied at uptake          -1.7746
+  Returned at end of life           +1.9840
+  Net biogenic carbon               +0.2094
 ```
+
+`Range width` is each component's share of the raw-material range — its mass
+fraction times its own low-to-high span. It answers "which component is worth
+resolving next" directly: alginate carries **12.9×** the range that stearic acid
+does, even after stearic acid's share doubled.
 
 ## Where the numbers come from
 
@@ -198,16 +237,19 @@ STEP 3. Biogenic carbon check
 - LDPE (C2H4)n → 85.6% C; PVA (C2H4O)n → 54.5% C → 2.00 kg CO2/kg at full oxidation
 - Sodium alginate (C6H7NaO6)n → 36.4% C; stearic acid (C18H36O2) → 76.0% C; zein 53% C (typical protein)
 - **Biogenic credit from the actual blend, not assumed equal to cellulose:** at
-  60/30/10 the film is 45.3% biogenic carbon → **−1.66 kg CO2e/kg**. Cellulose
-  would give −1.63 — within 2%, but only coincidentally: alginate's low carbon
-  content and stearic acid's high one happen to cancel. Change the ratios and
-  that disappears, which is why it is calculated rather than borrowed.
+  the recalled 57/21/21 the film is 48.4% biogenic carbon → **−1.77 kg CO2e/kg**.
+  Cellulose would give −1.63, now **9% adrift**. Under the old assumed 60/30/10
+  the two agreed to within 2%, and that coincidence is exactly what a cellulose
+  shortcut would have relied on: doubling the stearic acid share (76.0% C, the
+  most carbon-dense component) broke it. The credit is calculated from the real
+  blend for this reason.
 
 ### Still unsourced
 
-- **All three blend ratios** — reconstructed, not measured, and they move the
-  raw-material total materially. These are now the **only** placeholder inputs
-  left, and they are why every biomaterial row is still flagged.
+- **The blend ratios** — now the recalled recipe (0.8 g / 0.3 g / 0.3 g) rather
+  than a reconstructed guess, which is a real improvement, but from memory not a
+  lab record. Tagged `RECALLED`; they are why every biomaterial row is still
+  flagged. **No placeholder inputs remain.**
 - **A factory-gate purified-alginate figure** — the remaining boundary mismatch.
 - **A measured industrial zein figure** to replace the derived one; above all a
   stated **solvent recovery rate**, the parameter the derivation turns on.
@@ -242,6 +284,6 @@ lca_film/
   report.py          Tables, ASCII chart, sensitivity, boundary audit, --trace
   chart.py           Dependency-free themed SVG chart
   __main__.py        CLI
-tests/test_lca.py    87 tests
+tests/test_lca.py    88 tests
 out/                 Generated charts (regenerate with --svg)
 ```

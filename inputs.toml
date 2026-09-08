@@ -212,9 +212,9 @@ summary  = "Solvent-cast and dehydrated film from sodium alginate, zein and stea
 [[materials.composition]]
 id               = "alginate"
 component        = "Sodium alginate"
-mass_fraction    = 0.60
-frac_confidence  = "placeholder"
-frac_note        = "Formulation ratio is reconstructed, not measured. The original 2023 recipe is unavailable. Alginate is assumed the film former and majority component."
+dry_mass_g       = 0.8
+frac_confidence  = "recalled"
+frac_note        = "Recalled formulation, not a lab record. Wet recipe as given: sodium alginate 0.8 g dissolved in ~80 ml water; zein 0.3 g and stearic acid 0.3 g dissolved together in ~15 ml ethanol; the two solutions then combined and cast. Water and ethanol are solvents and evaporate during dehydration, so they carry no dry-film mass and are not blend components -- their PROCESSING energy is in the casting and dehydration stage instead. Dry basis is therefore 0.8 + 0.3 + 0.3 = 1.4 g, and the model normalises the grams rather than storing rounded percentages, so the fractions always sum to exactly 1. Alginate is the film former at 0.8 g, 57.1% of dry mass."
 # (C6H7NaO6)n : C 72.066 / MW 198.106
 carbon_mass_fraction = 0.3638
 biogenic             = true
@@ -267,9 +267,9 @@ note       = "Directional support that purified alginate belongs in the high sin
 [[materials.composition]]
 id               = "zein"
 component        = "Zein"
-mass_fraction    = 0.30
-frac_confidence  = "placeholder"
-frac_note        = "Reconstructed formulation ratio, not measured."
+dry_mass_g       = 0.3
+frac_confidence  = "recalled"
+frac_note        = "Recalled formulation, not a lab record. Wet recipe as given: sodium alginate 0.8 g dissolved in ~80 ml water; zein 0.3 g and stearic acid 0.3 g dissolved together in ~15 ml ethanol; the two solutions then combined and cast. Water and ethanol are solvents and evaporate during dehydration, so they carry no dry-film mass and are not blend components -- their PROCESSING energy is in the casting and dehydration stage instead. Dry basis is therefore 0.8 + 0.3 + 0.3 = 1.4 g, and the model normalises the grams rather than storing rounded percentages, so the fractions always sum to exactly 1. Zein is 0.3 g, 21.4% of dry mass -- down from the 30% previously assumed."
 carbon_mass_fraction = 0.5300
 biogenic             = true
 value      = 8.40
@@ -306,9 +306,9 @@ note       = "The most useful thing this paper gives us is not a number but a ho
 [[materials.composition]]
 id               = "stearic_acid"
 component        = "Stearic acid"
-mass_fraction    = 0.10
-frac_confidence  = "placeholder"
-frac_note        = "Reconstructed formulation ratio, not measured. Acts as plasticiser / hydrophobic modifier."
+dry_mass_g       = 0.3
+frac_confidence  = "recalled"
+frac_note        = "Recalled formulation, not a lab record. Wet recipe as given: sodium alginate 0.8 g dissolved in ~80 ml water; zein 0.3 g and stearic acid 0.3 g dissolved together in ~15 ml ethanol; the two solutions then combined and cast. Water and ethanol are solvents and evaporate during dehydration, so they carry no dry-film mass and are not blend components -- their PROCESSING energy is in the casting and dehydration stage instead. Dry basis is therefore 0.8 + 0.3 + 0.3 = 1.4 g, and the model normalises the grams rather than storing rounded percentages, so the fractions always sum to exactly 1. Stearic acid is 0.3 g, 21.4% of dry mass -- roughly DOUBLE the 10% previously assumed, and equal to zein rather than a minor plasticiser. It also has the highest carbon content of the three (76.0%), so this raises the biogenic carbon credit."
 # C18H36O2 : C 216.198 / MW 284.484
 carbon_mass_fraction = 0.7600
 biogenic             = true
@@ -390,8 +390,8 @@ text     = "Alginate and stearic acid central values are food-ingredient figures
 
 [[materials.qualitative_flags]]
 severity = "medium"
-topic    = "Formulation is reconstructed"
-text     = "All three blend ratios are placeholders. Because the component footprints differ by a factor of ~7 (alginate 21.29 vs zein proxy 3.00), the blend ratio is not a detail -- it moves the raw-material total materially. Replace with the real recipe before quoting any number from this model."
+topic    = "Formulation is recalled, not recorded"
+text     = "The blend is now the actual recalled recipe (0.8 g alginate / 0.3 g zein / 0.3 g stearic acid) rather than a reconstructed guess, which is a real improvement -- but it comes from memory, not a lab record, and cannot be audited. It is tagged `recalled` for that reason and still marks every result as unverifiable. Two things would change if the recollection is wrong: the raw-material total moves roughly in proportion to the alginate share, and the biogenic carbon credit moves with the stearic acid share, since stearic acid is the most carbon-dense component at 76.0% C."
 
 [[materials.qualitative_flags]]
 severity = "medium"

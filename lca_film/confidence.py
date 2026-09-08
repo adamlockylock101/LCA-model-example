@@ -18,12 +18,18 @@ class Confidence(enum.Enum):
 
     ``rank`` drives propagation: combining values yields the weakest tag of the
     inputs. ``marker`` is what gets printed next to the number.
+
+    RECALLED sits below ESTIMATE deliberately. A recollection of the actual
+    formulation is more *relevant* than a generic industry figure, but it is
+    less *verifiable*, and for a model whose purpose is defensibility it is
+    verifiability that has to drive the ranking.
     """
 
     LITERATURE = ("literature", 0, "LIT", "Literature-backed")
     DERIVED = ("derived", 1, "DER", "Derived by calculation")
     ESTIMATE = ("estimate", 2, "EST", "Industry-typical estimate")
-    PLACEHOLDER = ("placeholder", 3, "PLACEHOLDER", "PLACEHOLDER, needs a source")
+    RECALLED = ("recalled", 3, "RECALLED", "Recalled from memory, not a record")
+    PLACEHOLDER = ("placeholder", 4, "PLACEHOLDER", "PLACEHOLDER, needs a source")
 
     def __init__(self, key: str, rank: int, marker: str, label: str):
         self.key = key
@@ -42,6 +48,16 @@ class Confidence(enum.Enum):
     @property
     def is_placeholder(self) -> bool:
         return self is Confidence.PLACEHOLDER
+
+    @property
+    def is_unverified(self) -> bool:
+        """True for anything that cannot be checked against an external record.
+
+        A recalled figure is not a placeholder -- it is a real statement about
+        this specific film rather than a stand-in. But it is no more auditable
+        than one, so results built on it must still be marked.
+        """
+        return self in (Confidence.RECALLED, Confidence.PLACEHOLDER)
 
     def __str__(self) -> str:
         return self.marker

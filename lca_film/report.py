@@ -96,13 +96,14 @@ def placeholder_register(results: Sequence[Result]) -> list[str]:
     """Everything still unsourced, and what fixing it would be worth."""
     out = [
         RULE,
-        "PLACEHOLDER REGISTER  --  what still needs a source",
+        "UNVERIFIABLE INPUTS  --  placeholders needing a source, and recalled values",
         RULE,
     ]
     seen: dict[str, tuple[str, float, float]] = {}
     for r in results:
-        for item in r.placeholder_items:
-            seen.setdefault(item.label, (item.note, item.low, item.high))
+        for item in r.unverified_items:
+            key = f"[{item.confidence.marker}] {item.label}"
+            seen.setdefault(key, (item.note, item.low, item.high))
     if not seen:
         out.append("None. Every input is sourced, derived, or a tagged estimate.")
         out.append("")
@@ -308,24 +309,42 @@ def trace(study: Study, material_id: str, route_id: str) -> list[str]:
         out.append("STEP 1. Raw materials, built up from the formulation")
         out.append("")
         out.append(
-            f"  {'Component':<20}{'Mass':>7}{'x':>3}{'kg CO2e/kg':>12}"
-            f"{'=':>3}{'Contribution':>14}  {'Tag':<12} Boundary"
+            f"  {'Component':<18}{'Dry g':>7}{'Frac':>8}{'kg CO2e/kg':>12}"
+            f"{'Contribution':>14}{'Range width':>13}  {'Tag':<13}Boundary"
         )
-        out.append("  " + "-" * 96)
+        out.append("  " + "-" * 108)
         subtotal = 0.0
+        spread_total = 0.0
         for c in material.composition:
             contribution = c.mass_fraction.value * c.footprint.value
+            spread = c.mass_fraction.value * (
+                c.footprint.high_or_value - c.footprint.low_or_value
+            )
             subtotal += contribution
+            spread_total += spread
             tag = f"[{c.footprint.confidence.marker}]"
+            grams = "-" if c.dry_mass_g is None else f"{c.dry_mass_g:.1f}"
             out.append(
-                f"  {c.name:<20}{c.mass_fraction.value:>7.2f}{'x':>3}"
-                f"{c.footprint.value:>12.2f}{'=':>3}{contribution:>14.4f}  "
-                f"{tag:<14}{c.footprint.boundary}"
+                f"  {c.name:<18}{grams:>7}{c.mass_fraction.value:>8.4f}"
+                f"{c.footprint.value:>12.2f}{contribution:>14.4f}{spread:>13.4f}  "
+                f"{tag:<13}{c.footprint.boundary}"
             )
             if c.footprint.overridden_by:
-                out.append(f"  {'':<20}  overridden by scenario: {c.footprint.overridden_by}")
-        out.append("  " + "-" * 96)
-        out.append(f"  {'Raw material subtotal':<20}{subtotal:>39.4f}")
+                out.append(f"  {'':<18}  overridden by scenario: {c.footprint.overridden_by}")
+        out.append("  " + "-" * 108)
+        out.append(
+            f"  {'Raw material subtotal':<18}{'':>27}{subtotal:>14.4f}{spread_total:>13.4f}"
+        )
+        out.append("")
+        out.append(
+            "  'Range width' is that component's share of the raw-material range: "
+            "its mass"
+        )
+        out.append(
+            "  fraction times its own low-to-high span. It is how much this "
+            "component alone"
+        )
+        out.append("  could move the total, and so which one is worth resolving next.")
         out.append("")
     else:
         out.append("STEP 1. Raw material (given directly, not a blend)")
