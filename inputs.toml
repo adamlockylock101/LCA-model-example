@@ -219,14 +219,14 @@ frac_note        = "Formulation ratio is reconstructed, not measured. The origin
 carbon_mass_fraction = 0.3638
 biogenic             = true
 value      = 21.29
-low        = 20.80
-high       = 21.30
+low        = 13.60
+high       = 22.79
 confidence = "literature"
 boundary   = "retail_shelf"
 source     = "CarbonCloud ClimateHub product report, sodium alginate (E401): 21.29 kg CO2e/kg, cradle to retail shelf."
-note       = "Range is the agreement between the only TWO sources that measure purified alginate: CarbonCloud 21.29, and a seaweed-biorefinery LCA giving ~20.8 kg CO2e/kg (7042.7 kg CO2e per tonne dry seaweed yielding 338 kg alginate). READ THE RANGE CORRECTLY: 20.80-21.30 means those two sources agree, NOT that alginate is known to within 2%. Everything that actually makes this number uncertain -- extraction yield, biorefinery co-product allocation, and the retail-shelf boundary -- is listed under `unquantified` below because none of it can be given a defensible number from the sources found. The 4.00-5.90 Sargassum figure previously used as the lower bound has been moved to a scope variant: it measures a composite bioplastic, not alginate, and was making a product mismatch look like uncertainty. BOUNDARY: CarbonCloud runs from agricultural inputs to the retail shelf including packaging, storage and deforestation, so 21.29 is biased HIGH against the factory-gate polymer eco-profiles; direction known, size not."
+note       = "Central value is CarbonCloud 21.29, corroborated by a seaweed-biorefinery LCA at ~20.8 kg CO2e/kg (7042.7 kg CO2e per tonne dry seaweed yielding 338 kg alginate, i.e. a 33.8% yield basis). RANGE IS YIELD-DERIVED, not source agreement: published alginate yields for Laminaria digitata span 30.9% of dry biomass (ultrasound-assisted acid extraction) to 51.8% (40 C, particle size under 1 mm). Per-kg footprint scales inversely with yield, so rescaling the 20.83 figure across that span gives 13.60 (at 51.8%) to 22.79 (at 30.9%). Yield is the driver both alginate LCAs name first, and it is now quantified rather than merely listed. The 4.00-5.90 Sargassum figure previously used as the lower bound has been moved to a scope variant: it measures a composite bioplastic, not alginate, and was making a product mismatch look like uncertainty. BOUNDARY: CarbonCloud runs from agricultural inputs to the retail shelf including packaging, storage and deforestation, so 21.29 is biased HIGH against the factory-gate polymer eco-profiles; direction known, size not."
 unquantified = [
-  "Extraction yield. The biorefinery figure states 338 kg alginate per tonne dry seaweed (33.8%). Alginate content varies by species, season and extraction route, and both alginate LCAs found name yield as a main hotspot. Per-kg footprint scales inversely with yield, so a yield half as good doubles this number. No sourced yield range was found, so this is not in low/high.",
+  "Species and season. The quantified yield span (30.9-51.8%) is for Laminaria digitata only. Industrial alginate also comes from Laminaria hyperborea, Ascophyllum and Macrocystis, whose alginate contents differ and vary seasonally. The range in low/high covers extraction-route yield for one species, not the spread across the species actually used.",
   "Co-product allocation. The ~20.8 corroborating figure assigns 100% of a multi-output biorefinery (food, materials AND energy from one tonne of seaweed) to the alginate stream. That was this model's choice, not the study's. Under any co-product allocation the alginate share falls, by an amount that depends entirely on the allocation basis chosen.",
   "Retail-shelf to factory-gate correction. Removing packaging, storage, retail transport and land-use change would lower 21.29 by an unknown amount. The boundary audit flags the direction; no source found lets the size be quantified.",
   "Purification depth. Food-grade E401 is purified to a specification a film former may not need. Purification is named as a main hotspot, so a technical-grade alginate could sit materially lower.",
@@ -272,33 +272,35 @@ frac_confidence  = "placeholder"
 frac_note        = "Reconstructed formulation ratio, not measured."
 carbon_mass_fraction = 0.5300
 biogenic             = true
-value      = 3.00
-low        = 1.00
-high       = 8.00
-confidence = "placeholder"
+value      = 8.40
+low        = 6.37
+high       = 10.43
+confidence = "derived"
 boundary   = "factory_gate"
-source     = "NO INDUSTRIAL FIGURE FOUND. This is a proxy, not a measurement."
-note       = "PROXY: zein is a co-product of corn milling, whose corn-derived streams sit near 0.65-1.75 kg CO2e/kg (CarbonCloud corn starch/flour reports), uplifted for the ethanol extraction and drying needed to isolate zein. The 1.00-8.00 range is ENGINEERING JUDGEMENT for an industrial process with solvent recovery, not a measured or sourced spread -- which is exactly why the tag is `placeholder` and stays that way. The 760 and 5300 lab-scale figures previously used as the upper bound have been moved to a scope variant: they are an accurate measurement of a LABORATORY SOLVENT INVENTORY, not a high estimate of zein, and carrying them in the range put a 239 kg CO2e/kg span on this input that made the sensitivity ranking meaningless."
+derivation = "lab_scenario_rescaled_for_industrial_solvent_recovery"
+source     = "Derived from RSC Green Chem., 2026, 'Life cycle assessment of zein, ethyl lactate, and derivative nanofiltration membranes'. That study reports FOUR scenarios: corn gluten meal feedstock at 232 (isopropanol) and 107 (ethanol) kg CO2e/kg zein, and DDGS feedstock at 5300 (IPA) and 760 (EtOH). It attributes AT LEAST 95% of zein's impact to extraction solvent, and reports that solvent reuse and recovery cut virgin solvent use to 33% and waste to 9%."
+note       = "DERIVED, not measured. Takes the study's best published scenario -- corn gluten meal with ethanol, 107 kg CO2e/kg -- and rescales the 95% solvent share for industrial closed-loop recovery: 107 x (0.95 x (1 - recovery) + 0.05). At 99% recovery that gives 6.37, at 95% it gives 10.43; 8.40 is the midpoint. THE RECOVERY RATE IS AN ENGINEERING ASSUMPTION, not from the paper: commercial solvent extraction routinely achieves 95-99%, but the paper's own reuse scenario only reaches 67% (33% virgin), which would give 38.89. CORRECTION TO THIS MODEL'S EARLIER RECORD: the previous note said this paper reported only 760 and 5300. It reports four scenarios, and the two corn-gluten-meal ones are an order of magnitude lower. The old 3.00 proxy, built from corn-stream footprints, was almost certainly TOO LOW -- it ignored that solvent, not feedstock, is what this process costs."
 unquantified = [
-  "Scale-up factor from laboratory to industrial extraction. The only published zein LCA is lab-scale and solvent-dominated; the gap to an industrial process with closed-loop solvent recovery is orders of magnitude and cannot be estimated from the retrieved summary.",
-  "Co-product allocation of the corn burden. Zein is a minor fraction of corn gluten meal or DDGS, which are themselves co-products of starch or ethanol production. Whether zein carries a share of corn farming (mass or economic allocation) or none at all (residue treated as cut-off) changes the upstream contribution substantially -- though at any industrial figure this is a smaller effect than the scale-up factor.",
-  "Feedstock route. Zein from wet-mill corn gluten meal and zein from dry-mill DDGS are different processes with different yields and purities.",
+  "Solvent recovery rate. This is the single parameter the derivation turns on, and it is assumed rather than sourced. The low/high span covers 99% to 95% recovery. If an industrial plant only matched the paper's own reuse scenario (67% recovery), the figure would be 38.89 -- roughly four times the high bound.",
+  "Whether the lab process carries other inefficiencies that would also fall away at industrial scale. Batch heating and absent heat integration are not separated out in the 5% non-solvent residual, so the derived figure may be conservative.",
+  "Co-product allocation of the corn burden. Zein is a minor fraction of corn gluten meal, itself a co-product of starch production. Mass, economic or cut-off allocation changes the upstream contribution -- though at these magnitudes it is small against the solvent term.",
+  "Purity and grade. The published scenarios are laboratory preparations; an industrial technical-grade zein for film forming may need less purification than a food-grade one.",
 ]
 
 [[materials.composition.scope_variants]]
 id         = "lab_scale_solvent_extraction"
-label      = "Lab-scale solvent extraction of zein (two routes)"
-value      = 760.00
-low        = 760.00
+label      = "Lab-scale solvent extraction of zein (four published scenarios)"
+value      = 107.00
+low        = 107.00
 high       = 5300.00
 confidence = "literature"
 comparable = false
 product    = "1 kg of zein -- the SAME functional unit as the input above. The divergence is not a boundary or functional-unit mismatch."
-feedstock  = "DDGS (dry-mill ethanol residue)."
+feedstock  = "Both corn gluten meal (wet mill) and DDGS (dry mill). CGM is the better route by an order of magnitude, because higher protein content cuts the biomass, solvent and energy needed per kg of zein."
 includes   = "Cradle-to-gate laboratory extraction. Impacts overwhelmingly dominated by solvent use; the study's own variables include the solvent management method, i.e. whether solvent is recovered."
 excludes   = "Any industrial solvent recovery loop."
-why_not_comparable = "This is a technology-readiness mismatch, not a scope one. At 760+ essentially the whole figure is laboratory solvent; the corn upstream (at most ~2) is under 0.3% of it. It is an accurate measurement of a bench process and says nothing about an industrial one. Carried as a bound it implied a 239 kg CO2e/kg uncertainty on a 3.00 input."
-source     = "RSC Green Chem., 2026, 'Life cycle assessment of zein, ethyl lactate, and derivative nanofiltration membranes': 760 and 5300 kg CO2e per kg zein for two lab-scale extraction scenarios."
+why_not_comparable = "Technology-readiness mismatch, not a scope one: same functional unit, same nominal boundary, but a bench process without industrial solvent recovery. At least 95% of every one of these figures is extraction solvent. The model now USES the best of them (107) as the anchor for a derived industrial figure rather than carrying them as bounds -- see the zein input above."
+source     = "RSC Green Chem., 2026: corn gluten meal 232 (IPA) and 107 (EtOH); DDGS 5300 (IPA) and 760 (EtOH) kg CO2e per kg zein. DDGS needs ~5x more solvent to offset ~6x lower extraction efficiency, which is the whole of the difference."
 note       = "The most useful thing this paper gives us is not a number but a hotspot: extraction solvent dominates, so any industrial figure hinges on recovery rate."
 
 [[materials.composition]]

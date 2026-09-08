@@ -340,9 +340,21 @@ class TestScopeVariants(unittest.TestCase):
         self.assertLess(self.zein.footprint.high_or_value, 100.0)
 
     def test_the_ranges_that_were_scope_disagreement_have_collapsed(self):
-        """The whole point: parametric spread is now small and meaningful."""
-        self.assertLess(self.alginate.footprint.spread, 1.0)
-        self.assertLess(self.zein.footprint.spread, 10.0)
+        """Spreads are now parametric and tied to a named driver.
+
+        Alginate's span is extraction yield; zein's is solvent recovery rate.
+        Both are far below the scope-disagreement spans they replaced (17.30
+        and 759.00), and both stay within the same order of magnitude as the
+        value itself -- which is what distinguishes uncertainty from a
+        category error.
+        """
+        for component, driver_span in (
+            (self.alginate, 17.30),
+            (self.zein, 759.00),
+        ):
+            spread = component.footprint.spread
+            self.assertLess(spread, driver_span)
+            self.assertLess(spread, component.footprint.value)
 
     def test_every_variant_declares_what_it_measures(self):
         for component in (self.alginate, self.zein):
@@ -409,13 +421,14 @@ class TestUnquantifiedUncertainty(unittest.TestCase):
         for expected in ("yield", "allocation", "boundary", "purification"):
             self.assertIn(expected, drivers)
 
-    def test_a_tight_range_is_accompanied_by_named_drivers(self):
-        """Alginate's 0.5-wide range would otherwise imply a settled input."""
+    def test_a_quantified_range_still_carries_its_unquantified_drivers(self):
+        """A sourced yield span closes one driver; it does not close the rest."""
         alginate = next(
             c for c in self.study.material("biofilm").composition if c.id == "alginate"
         )
-        self.assertLess(alginate.footprint.spread, 1.0)
         self.assertGreaterEqual(len(alginate.footprint.unquantified), 3)
+        drivers = " ".join(alginate.footprint.unquantified).lower()
+        self.assertIn("species", drivers)  # yield is now in low/high, species is not
 
     def test_drivers_propagate_to_the_blended_line_item(self):
         item = raw_material_item(self.study.material("biofilm"))
@@ -516,12 +529,20 @@ class TestPlaceholderFlagging(unittest.TestCase):
             self.assertEqual(result.confidence.rank, worst, result.label)
 
     def test_placeholder_in_a_blend_propagates_to_the_total(self):
-        """One unsourced component must taint the blended raw-material figure."""
+        """One unsourced input must taint the blended figure.
+
+        Every component footprint is now sourced or derived; the reconstructed
+        mass fractions are what remain unsourced, and they must still carry the
+        flag through to the total.
+        """
         biofilm = self.study.material("biofilm")
         item = raw_material_item(biofilm)
         self.assertTrue(item.confidence.is_placeholder)
-        self.assertTrue(
+        self.assertFalse(
             any(c.footprint.confidence.is_placeholder for c in biofilm.composition)
+        )
+        self.assertTrue(
+            any(c.mass_fraction.confidence.is_placeholder for c in biofilm.composition)
         )
 
     def test_no_placeholder_means_no_flag(self):
@@ -568,7 +589,7 @@ class TestReportOutput(unittest.TestCase):
 class TestSwappability(unittest.TestCase):
     """Inputs must be replaceable without touching calculation code."""
 
-    def test_replacing_the_zein_placeholder_narrows_the_result_and_lifts_the_tag(self):
+    def test_replacing_an_input_narrows_the_result_but_keeps_the_blend_flag(self):
         swapped = evaluate_all(
             load_study(
                 overrides=[
@@ -583,13 +604,21 @@ class TestSwappability(unittest.TestCase):
                 ]
             )
         )
+        baseline = {
+            r.route.id: r.total_high - r.total_low
+            for r in evaluate_all(load_study())
+            if r.material.id == "biofilm"
+        }
         rows = [r for r in swapped if r.material.id == "biofilm"]
         self.assertTrue(rows)
         for row in rows:
-            # Zein is no longer a placeholder, but the reconstructed blend
-            # ratios still are, so the flag must survive.
+            # Narrowing one input must narrow the total...
+            self.assertLess(
+                row.total_high - row.total_low, baseline[row.route.id], row.label
+            )
+            # ...but the reconstructed blend ratios are still unsourced, so the
+            # flag must survive a component being upgraded.
             self.assertTrue(row.is_placeholder_based, row.label)
-            self.assertLess(row.total_high - row.total_low, 3.0, row.label)
 
     def test_a_scenario_file_can_be_swapped_wholesale(self):
         """--inputs must accept a different dataset with no code change."""
@@ -686,8 +715,8 @@ class TestScenarios(unittest.TestCase):
             if r.material.id == "biofilm" and r.route.id == "composting"
         )
         self.assertLess(after.total, before.total)
-        self.assertAlmostEqual(before.total, 14.70, places=2)
-        self.assertAlmostEqual(after.total, 4.33, places=2)
+        self.assertAlmostEqual(before.total, 16.32, places=2)
+        self.assertAlmostEqual(after.total, 5.95, places=2)
 
     def test_override_records_which_scenario_set_it(self):
         study = load_study(scenario="sargassum_route")
@@ -768,7 +797,7 @@ class TestTrace(unittest.TestCase):
         self.assertIn("Credit applied at uptake", self.text)
 
     def test_trace_running_total_reaches_the_reported_total(self):
-        self.assertIn("14.7000", self.text)
+        self.assertIn("16.3200", self.text)
 
     def test_trace_reports_boundary_of_each_component(self):
         self.assertIn("retail_shelf", self.text)
