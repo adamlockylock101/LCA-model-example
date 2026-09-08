@@ -16,6 +16,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Mapping, Sequence
 
+from .boundary import BoundaryIssue, is_comparable
 from .confidence import Confidence
 from .model import (
     Component,
@@ -50,12 +51,39 @@ class Study:
     meta: Mapping[str, str]
     constants: Constants
     materials: Sequence[Material]
+    scenario: str = "default"
+    scenario_label: str = "As sourced"
+    scenario_description: str = ""
 
     def material(self, material_id: str) -> Material:
         for m in self.materials:
             if m.id == material_id:
                 return m
         raise KeyError(material_id)
+
+    @property
+    def target_boundary(self) -> str:
+        return str(self.meta.get("target_boundary", "factory_gate"))
+
+    def boundary_issues(self) -> list[BoundaryIssue]:
+        """Every raw-material input not measured on the study's target boundary."""
+        target = self.target_boundary
+        issues: list[BoundaryIssue] = []
+        for material in self.materials:
+            quantities = list(material.stages) + [
+                c.footprint for c in material.composition
+            ]
+            for q in quantities:
+                if not is_comparable(q.boundary, target):
+                    issues.append(
+                        BoundaryIssue(
+                            material=material.name,
+                            input_label=q.label,
+                            found=q.boundary,
+                            target=target,
+                        )
+                    )
+        return issues
 
 
 def _require(table: Mapping[str, Any], key: str, where: str) -> Any:
@@ -91,11 +119,13 @@ def _quantity(table: Mapping[str, Any], where: str, *, label: str) -> Quantity:
         label=label,
         value=value,
         confidence=confidence,
+        boundary=str(table.get("boundary", "unspecified")),
         low=low,
         high=high,
         source=source,
         note=str(table.get("note", "")).strip(),
         derivation=derivation,
+        overridden_by=str(table.get("overridden_by", "")).strip(),
     )
 
 
@@ -108,6 +138,7 @@ def _component(table: Mapping[str, Any], where: str) -> Component:
         note=str(table.get("frac_note", "")).strip(),
     )
     return Component(
+        id=str(table.get("id", name.lower().replace(" ", "_"))),
         name=name,
         mass_fraction=fraction,
         footprint=_quantity(table, f"{where} ({name})", label=f"{name} raw material"),
@@ -191,15 +222,104 @@ def _material(table: Mapping[str, Any]) -> Material:
     )
 
 
-def load_study(path: Path | str | None = None) -> Study:
-    """Read the input file and return a validated :class:`Study`."""
+def _apply_overrides(
+    raw: dict, overrides: Sequence[Mapping[str, Any]], label: str
+) -> None:
+    """Rewrite raw input tables in place before they are validated.
+
+    Overrides are applied to the raw TOML rather than to built objects so that
+    an overridden value goes through exactly the same validation as an authored
+    one. A scenario cannot smuggle in a literature tag with no source.
+    """
+    for override in overrides:
+        path = str(_require(override, "path", f"scenario '{label}'"))
+        target = _resolve_path(raw, path, label)
+        for key, value in override.items():
+            if key == "path":
+                continue
+            target[key] = value
+        # Clear any stale bound that the override did not restate, so a new
+        # central value can never sit outside a leftover range.
+        if "value" in override:
+            if "low" not in override:
+                target.pop("low", None)
+            if "high" not in override:
+                target.pop("high", None)
+        target["overridden_by"] = label
+
+
+def _resolve_path(raw: dict, path: str, label: str) -> dict:
+    """Resolve '<material>/<kind>/<id>' to the raw table it names."""
+    try:
+        material_id, kind, item_id = path.split("/")
+    except ValueError:
+        raise ValueError(
+            f"scenario '{label}': override path {path!r} must be "
+            f"'<material_id>/<stage|component|eol>/<id>'"
+        ) from None
+
+    key = {"stage": "stages", "component": "composition", "eol": "eol_routes"}.get(kind)
+    if key is None:
+        raise ValueError(
+            f"scenario '{label}': unknown path kind {kind!r} in {path!r}; "
+            f"expected 'stage', 'component' or 'eol'"
+        )
+
+    for material in raw.get("materials", []):
+        if material.get("id") != material_id:
+            continue
+        for entry in material.get(key, []):
+            entry_id = entry.get("id") or entry.get("component", "")
+            if entry_id == item_id:
+                return entry
+        raise ValueError(
+            f"scenario '{label}': no {kind} {item_id!r} on material {material_id!r}"
+        )
+    raise ValueError(f"scenario '{label}': no material {material_id!r}")
+
+
+def load_study(
+    path: Path | str | None = None,
+    scenario: str = "default",
+    overrides: Sequence[Mapping[str, Any]] = (),
+) -> Study:
+    """Read the input file, apply a scenario and any ad-hoc overrides, validate.
+
+    ``overrides`` are applied after the named scenario, so a ``--set`` on the
+    command line beats the scenario it is layered on top of.
+    """
     path = Path(path) if path is not None else DEFAULT_INPUTS
     with open(path, "rb") as fh:
         raw = tomllib.load(fh)
+
+    scenarios = raw.get("scenarios", {})
+    if scenario not in scenarios and scenario != "default":
+        known = ", ".join(sorted(scenarios)) or "none defined"
+        raise ValueError(f"unknown scenario {scenario!r}; available: {known}")
+
+    spec = scenarios.get(scenario, {})
+    _apply_overrides(raw, spec.get("overrides", []), scenario)
+    if overrides:
+        _apply_overrides(raw, overrides, "--set")
 
     constants = Constants(**raw["constants"])
     materials = tuple(_material(m) for m in raw.get("materials", []))
     if not materials:
         raise ValueError(f"{path}: no materials defined")
 
-    return Study(meta=raw.get("meta", {}), constants=constants, materials=materials)
+    return Study(
+        meta=raw.get("meta", {}),
+        constants=constants,
+        materials=materials,
+        scenario=scenario,
+        scenario_label=str(spec.get("label", scenario)),
+        scenario_description=str(spec.get("description", "")),
+    )
+
+
+def list_scenarios(path: Path | str | None = None) -> dict[str, dict]:
+    """Scenario names, labels and descriptions, without applying any."""
+    path = Path(path) if path is not None else DEFAULT_INPUTS
+    with open(path, "rb") as fh:
+        raw = tomllib.load(fh)
+    return raw.get("scenarios", {})

@@ -15,16 +15,23 @@ from .confidence import Confidence, weakest
 
 @dataclass(frozen=True)
 class Quantity:
-    """A single tagged number: a value, its confidence, and its provenance."""
+    """A single tagged number: a value, its confidence, its boundary, its source.
+
+    ``boundary`` matters as much as ``confidence``. A perfectly sourced number
+    measured on the wrong system boundary produces a confidently wrong
+    comparison, which is harder to catch than an obviously missing one.
+    """
 
     label: str
     value: float
     confidence: Confidence
+    boundary: str = "unspecified"
     low: Optional[float] = None
     high: Optional[float] = None
     source: str = ""
     note: str = ""
     derivation: str = ""
+    overridden_by: str = ""
 
     @property
     def low_or_value(self) -> float:
@@ -52,6 +59,7 @@ class Component:
     carbon balance: how much of the blend it is, and how much of it is carbon.
     """
 
+    id: str
     name: str
     mass_fraction: Quantity
     footprint: Quantity

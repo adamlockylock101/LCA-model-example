@@ -1,5 +1,5 @@
 __pycache__/
 *.pyc
-chart.svg
-results.csv
+*.csv
 .venv/
+out/*.html

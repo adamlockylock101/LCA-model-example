@@ -17,6 +17,8 @@ these tests fail -- which is the point.
 
 from __future__ import annotations
 
+import contextlib
+import io
 import sys
 import tempfile
 import unittest
@@ -30,10 +32,12 @@ from lca_film.calculate import (  # noqa: E402
     evaluate_all,
     raw_material_item,
 )
-from lca_film.chart import render_svg  # noqa: E402
-from lca_film.config import DEFAULT_INPUTS, load_study  # noqa: E402
+from lca_film.boundary import is_comparable  # noqa: E402
+from lca_film.chart import _axis_peak, render_svg  # noqa: E402
+from lca_film.config import DEFAULT_INPUTS, list_scenarios, load_study  # noqa: E402
 from lca_film.confidence import Confidence, weakest  # noqa: E402
-from lca_film.report import full_report  # noqa: E402
+from lca_film.report import boundary_report, full_report, trace  # noqa: E402
+from lca_film.__main__ import main, parse_set  # noqa: E402
 
 # Molar masses, independent of the config file, so the tests are a real check
 # and not a restatement of the inputs.
@@ -424,6 +428,230 @@ class TestSwappability(unittest.TestCase):
         for row in biofilm_rows:
             self.assertLess(row.total_high, 20.0, row.label)
             self.assertTrue(row.is_placeholder_based, row.label)
+
+
+class TestBoundaryTracking(unittest.TestCase):
+    """A well-sourced number on the wrong boundary is still the wrong number."""
+
+    def setUp(self):
+        self.study = load_study()
+
+    def test_food_database_inputs_are_flagged_as_mismatched(self):
+        issues = self.study.boundary_issues()
+        labels = {i.input_label for i in issues}
+        self.assertIn("Sodium alginate raw material", labels)
+        self.assertIn("Stearic acid raw material", labels)
+
+    def test_mismatch_names_the_direction_of_the_bias(self):
+        for issue in self.study.boundary_issues():
+            self.assertIn("OVERSTATES", issue.direction)
+
+    def test_polymer_eco_profiles_are_on_target_boundary(self):
+        issues = {i.input_label for i in self.study.boundary_issues()}
+        for material_id in ("ldpe", "pva"):
+            for stage in self.study.material(material_id).stages:
+                self.assertNotIn(stage.label, issues)
+
+    def test_process_and_eol_boundaries_are_never_flagged(self):
+        """Only raw-material acquisition is compared against the study target."""
+        self.assertTrue(is_comparable("process", "factory_gate"))
+        self.assertTrue(is_comparable("eol", "factory_gate"))
+        self.assertFalse(is_comparable("retail_shelf", "factory_gate"))
+
+    def test_boundary_report_reaches_the_full_report(self):
+        text = full_report(self.study)
+        self.assertIn("BOUNDARY AUDIT", text)
+        self.assertIn("OVERSTATES", text)
+
+    def test_harmonised_scenario_clears_the_mismatches(self):
+        harmonised = load_study(scenario="harmonised_boundary")
+        self.assertEqual(harmonised.boundary_issues(), [])
+        self.assertIn("No mismatches", "\n".join(boundary_report(harmonised)))
+
+
+class TestScenarios(unittest.TestCase):
+    """Swapping inputs must work from the data file, with no code change."""
+
+    def test_scenarios_are_discoverable(self):
+        names = list_scenarios()
+        self.assertIn("harmonised_boundary", names)
+        for spec in names.values():
+            self.assertTrue(spec.get("label"))
+
+    def test_unknown_scenario_is_rejected(self):
+        with self.assertRaisesRegex(ValueError, "unknown scenario"):
+            load_study(scenario="wishful_thinking")
+
+    def test_scenario_changes_the_result(self):
+        default = load_study()
+        harmonised = load_study(scenario="harmonised_boundary")
+        before = next(
+            r for r in evaluate_all(default)
+            if r.material.id == "biofilm" and r.route.id == "composting"
+        )
+        after = next(
+            r for r in evaluate_all(harmonised)
+            if r.material.id == "biofilm" and r.route.id == "composting"
+        )
+        self.assertLess(after.total, before.total)
+        self.assertAlmostEqual(before.total, 15.39, places=2)
+        self.assertAlmostEqual(after.total, 4.24, places=2)
+
+    def test_override_records_which_scenario_set_it(self):
+        harmonised = load_study(scenario="harmonised_boundary")
+        alginate = next(
+            c for c in harmonised.material("biofilm").composition if c.id == "alginate"
+        )
+        self.assertEqual(alginate.footprint.overridden_by, "harmonised_boundary")
+
+    def test_scenario_cannot_smuggle_in_an_unsourced_literature_tag(self):
+        """Overrides go through the same validation as authored values."""
+        with self.assertRaisesRegex(ValueError, "requires a 'source'"):
+            load_study(
+                overrides=[
+                    {
+                        "path": "biofilm/component/zein",
+                        "value": 1.0,
+                        "confidence": "literature",
+                        "source": "",
+                    }
+                ]
+            )
+
+    def test_bad_override_path_is_rejected_with_a_useful_message(self):
+        with self.assertRaisesRegex(ValueError, "no component 'unobtainium'"):
+            load_study(overrides=[{"path": "biofilm/component/unobtainium", "value": 1.0}])
+        with self.assertRaisesRegex(ValueError, "unknown path kind"):
+            load_study(overrides=[{"path": "biofilm/widget/zein", "value": 1.0}])
+
+    def test_override_replaces_a_stale_range(self):
+        """A new central value must not sit inside the old bounds by accident."""
+        study = load_study(overrides=[{"path": "biofilm/component/zein", "value": 900.0}])
+        zein = next(c for c in study.material("biofilm").composition if c.id == "zein")
+        self.assertEqual(zein.footprint.value, 900.0)
+        self.assertEqual(zein.footprint.low_or_value, 900.0)
+        self.assertEqual(zein.footprint.high_or_value, 900.0)
+
+    def test_command_line_set_is_tagged_placeholder(self):
+        """A number typed at a shell prompt has no source, and must say so."""
+        override = parse_set("biofilm/component/zein=2.0")
+        self.assertEqual(override["confidence"], "placeholder")
+        study = load_study(overrides=[override])
+        zein = next(c for c in study.material("biofilm").composition if c.id == "zein")
+        self.assertTrue(zein.footprint.confidence.is_placeholder)
+        self.assertEqual(zein.footprint.value, 2.0)
+
+    def test_set_rejects_malformed_input(self):
+        for bad in ("nonsense", "biofilm/component/zein=abc"):
+            with self.assertRaises(Exception):
+                parse_set(bad)
+
+    def test_ad_hoc_override_beats_the_scenario_it_layers_on(self):
+        study = load_study(
+            scenario="harmonised_boundary",
+            overrides=[parse_set("biofilm/component/alginate=9.0")],
+        )
+        alginate = next(
+            c for c in study.material("biofilm").composition if c.id == "alginate"
+        )
+        self.assertEqual(alginate.footprint.value, 9.0)
+        self.assertEqual(alginate.footprint.overridden_by, "--set")
+
+
+class TestTrace(unittest.TestCase):
+    """The audit trail is the answer to 'where did this number come from'."""
+
+    def setUp(self):
+        self.study = load_study()
+        self.text = "\n".join(trace(self.study, "biofilm", "composting"))
+
+    def test_trace_shows_the_blend_arithmetic(self):
+        self.assertIn("Sodium alginate", self.text)
+        self.assertIn("21.29", self.text)
+        self.assertIn("12.7740", self.text)  # 0.60 x 21.29
+
+    def test_trace_shows_the_biogenic_credit_being_applied(self):
+        self.assertIn("Biogenic carbon credit", self.text)
+        self.assertIn("-1.6608", self.text)
+        self.assertIn("Credit applied at uptake", self.text)
+
+    def test_trace_running_total_reaches_the_reported_total(self):
+        self.assertIn("15.3900", self.text)
+
+    def test_trace_reports_boundary_of_each_component(self):
+        self.assertIn("retail_shelf", self.text)
+
+    def test_trace_on_a_fossil_material_says_why_there_is_no_credit(self):
+        text = "\n".join(trace(self.study, "ldpe", "landfill"))
+        self.assertIn("No biogenic carbon credit applied", text)
+
+    def test_unknown_route_lists_what_is_available(self):
+        with self.assertRaisesRegex(KeyError, "available"):
+            trace(self.study, "biofilm", "rocket_disposal")
+
+
+class TestChartLayout(unittest.TestCase):
+    """Layout regressions: labels that collide or bars that vanish."""
+
+    def setUp(self):
+        self.results = evaluate_all(load_study())
+
+    def test_axis_peak_ignores_an_order_of_magnitude_outlier(self):
+        """One 240-wide range must not squash every other bar to a stub."""
+        peak = _axis_peak(self.results)
+        top = max(r.total for r in self.results)
+        self.assertLess(peak, top * 3.0)
+        self.assertGreaterEqual(peak, top)
+
+    def test_axis_peak_still_covers_merely_wide_ranges(self):
+        harmonised = evaluate_all(load_study(scenario="harmonised_boundary"))
+        peak = _axis_peak(harmonised)
+        on_scale = [r for r in harmonised if not r.is_placeholder_based]
+        for row in on_scale:
+            self.assertLessEqual(row.total_high, peak, row.label)
+
+    def test_offscale_rows_state_the_real_number_in_text(self):
+        svg = render_svg(self.results, "t")
+        self.assertIn("242.90", svg)  # never silently clipped
+
+    def test_svg_height_covers_every_row(self):
+        """The last row must not fall off the bottom of the canvas."""
+        import re
+
+        svg = render_svg(self.results, "t")
+        height = float(re.search(r'height="([0-9.]+)"', svg).group(1))
+        ys = [float(m) for m in re.findall(r'y="([0-9.]+)"', svg)]
+        self.assertLess(max(ys), height, "content extends past the SVG height")
+
+    def test_each_material_keeps_its_own_hue(self):
+        svg = render_svg(self.results, "t")
+        for material_id in ("ldpe", "pva", "biofilm"):
+            self.assertIn(f"--s-{material_id}", svg)
+
+
+class TestCli(unittest.TestCase):
+    def test_table_and_trace_and_scenarios_all_exit_clean(self):
+        for argv in (
+            ["--table"],
+            ["--list-scenarios"],
+            ["--compare"],
+            ["--boundaries"],
+            ["--sensitivity"],
+            ["--trace", "biofilm/composting"],
+            ["--scenario", "harmonised_boundary", "--table"],
+            ["--set", "biofilm/component/zein=2.0", "--table"],
+        ):
+            with self.subTest(argv=argv):
+                buf = io.StringIO()
+                with contextlib.redirect_stdout(buf):
+                    self.assertEqual(main(argv), 0)
+                self.assertTrue(buf.getvalue().strip())
+
+    def test_bad_arguments_exit_non_zero_without_a_traceback(self):
+        for argv in (["--scenario", "nope"], ["--trace", "biofilm"], ["--trace", "x/y"]):
+            with self.subTest(argv=argv):
+                with contextlib.redirect_stderr(io.StringIO()):
+                    self.assertEqual(main(argv), 2)
 
 
 if __name__ == "__main__":

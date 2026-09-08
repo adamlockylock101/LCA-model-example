@@ -14,17 +14,38 @@
 #   "estimate"    Industry-typical estimate. Defensible order of magnitude from
 #                 general engineering knowledge, but not traced to a source.
 #   "placeholder" PLACEHOLDER, NEEDS A SOURCE. No credible published figure was
-#                 found. Any result that consumes one of these is flagged.
+#                 found. Any result that consumes one is flagged.
+#
+# Every raw-material input MUST also carry a `boundary`. Mixing boundaries is
+# the single easiest way to produce a wrong comparison, so the model tracks it
+# and warns rather than trusting the author to remember. Allowed values:
+#
+#   "factory_gate" Cradle to factory gate. Unpacked material at production site
+#                  out. No packaging, storage, retail transport or land-use
+#                  change. This is the PlasticsEurope eco-profile declared unit
+#                  and the study's target boundary.
+#   "retail_shelf" Cradle to retail shelf. Includes packaging, storage, retail
+#                  transport AND land-use change / deforestation. This is the
+#                  CarbonCloud food-ingredient boundary. WIDER than the target:
+#                  values on this boundary are biased HIGH relative to a
+#                  factory-gate figure and are not like-for-like comparable.
+#   "process"      Gate-to-gate conversion step.
+#   "eol"          End of life.
 #
 # `low` / `high` bound the plausible range and drive the sensitivity report.
 # Where a range is very wide, that IS the finding -- do not narrow it to look
 # tidier than the evidence is.
+#
+# `[scenarios.*]` at the bottom define named override sets. Run one with
+#   python3 -m lca_film --scenario <name>
+# Nothing in lca_film/ needs to change to add, edit or remove a scenario.
 # =============================================================================
 
 [meta]
 title            = "Cradle-to-grave GHG comparison: sanitary product anti-leak film"
 functional_unit  = "1 kg of finished film material"
 boundary         = "Cradle to grave: raw material acquisition + production, film forming, biogenic carbon uptake, end of life. Excludes converting, distribution, and use phase, which are assumed equivalent across the three candidates."
+target_boundary  = "factory_gate"
 gwp_method       = "GWP100, IPCC AR6"
 prepared         = "2026 reconstruction of a 2023 project. Original process data is NOT available; all figures are representative published values, tagged by confidence."
 
@@ -56,8 +77,9 @@ value      = 1.80
 low        = 1.70
 high       = 2.00
 confidence = "literature"
+boundary   = "factory_gate"
 source     = "PlasticsEurope eco-profile for LDPE resin, cradle-to-gate; commonly reported in the ~1.7-2.0 kg CO2e/kg range."
-note       = "Naphtha cracking to ethylene plus polymerisation. European average grid and steam."
+note       = "Naphtha cracking to ethylene plus polymerisation. European average grid and steam. PlasticsEurope's declared unit is 1 kg of UNPACKED resin at production site out, excluding packaging, use phase and end of life."
 
 [[materials.stages]]
 id         = "processing"
@@ -66,16 +88,18 @@ value      = 0.25
 low        = 0.15
 high       = 0.40
 confidence = "estimate"
+boundary   = "process"
 source     = ""
 note       = "Film extrusion energy at UK grid intensity. Not traced to a specific eco-profile; sensitive to line efficiency and grid year."
 
 [[materials.eol_routes]]
 id         = "incineration"
-label      = "Incineration (no energy-recovery credit)"
+label      = "Incineration"
 value      = 2.90
 low        = 2.80
 high       = 3.14
 confidence = "literature"
+boundary   = "eol"
 source     = "Near-total combustion of fossil carbon; widely reported ~2.9 kg CO2e/kg for PE."
 note       = "Upper bound 3.14 is the stoichiometric maximum at 100% oxidation of 85.63% carbon. The 2.90 central value implies ~92% oxidation. No energy-recovery credit is taken, which is the conservative choice."
 
@@ -86,6 +110,7 @@ value      = 0.05
 low        = 0.01
 high       = 0.10
 confidence = "estimate"
+boundary   = "eol"
 source     = ""
 note       = "LDPE is largely inert on landfill timescales. Value covers site operations only. Carbon stays sequestered, which flatters LDPE on GWP alone and says nothing about persistence."
 
@@ -109,6 +134,7 @@ value      = 2.36
 low        = 2.36
 high       = 3.40
 confidence = "literature"
+boundary   = "factory_gate"
 source     = "Kuraray, KURARAY POVAL(TM) life cycle assessment, 2024 update: 2.36 kg CO2e per kg PVOH, cradle-to-gate, Frankfurt production (2.47 in the preceding assessment)."
 note       = "Central value is a single manufacturer's own site-specific LCA, so it is a best case rather than an industry average. Kuraray states the figure is ~30% below the PVOH average in a major LCI database, which implies a generic average near 3.4 -- used here as the upper bound. Range is therefore manufacturer-best to database-average, not a measurement uncertainty."
 
@@ -119,16 +145,18 @@ value      = 0.30
 low        = 0.20
 high       = 0.45
 confidence = "estimate"
+boundary   = "process"
 source     = ""
 note       = "Assumed comparable to other film-forming routes, slightly above LDPE extrusion because water must be driven off in solution casting."
 
 [[materials.eol_routes]]
 id         = "biodegradation"
-label      = "End of life: biodegradation (wastewater / aqueous)"
+label      = "End of life: biodegradation (aqueous)"
 value      = 2.00
 low        = 0.40
 high       = 2.00
 confidence = "derived"
+boundary   = "eol"
 derivation = "stoichiometric_full_oxidation"
 source     = "Stoichiometry. Degradation EXTENT is contested: Rolsky & Kelkar, Int. J. Environ. Res. Public Health 2021, 18, 6027 (doi:10.3390/ijerph18116027) model only ~15-40% degradation in US wastewater treatment plants, implying most passes through; an industry-commissioned expert panel (SciPinion, 2024) and the American Cleaning Institute reject that model and conclude PVA is readily biodegradable."
 note       = "CRITICAL: on this route a LOWER number is NOT better. The high value (2.00) is complete mineralisation of the fossil carbon. The low value (0.40) represents the Rolsky & Kelkar case where ~80% does not mineralise -- the GWP falls only because the polymer persists in the environment as fragments instead. GWP alone cannot rank this route; see the qualitative flag."
@@ -140,6 +168,7 @@ value      = 2.00
 low        = 1.84
 high       = 2.00
 confidence = "derived"
+boundary   = "eol"
 derivation = "stoichiometric_full_oxidation"
 source     = "Stoichiometry: 54.53% carbon x 44.009/12.011."
 note       = "Low bound assumes 92% oxidation, matching the oxidation efficiency implied by the LDPE incineration figure."
@@ -151,6 +180,7 @@ value      = 0.10
 low        = 0.02
 high       = 0.30
 confidence = "estimate"
+boundary   = "eol"
 source     = ""
 note       = "Slow anaerobic degradation with some methane generation, partially captured. Not source-traced."
 
@@ -165,6 +195,13 @@ text     = "PVA passes OECD 301 biodegradability screening, but that test does n
 # =============================================================================
 # Raw-material footprint is BUILT UP from the blend components below, so the
 # formulation can be changed here without touching any calculation code.
+#
+# READ THE BOUNDARY WARNING. The alginate and stearic acid central values come
+# from a FOOD-ingredient database whose boundary runs to the retail shelf and
+# includes packaging, storage and land-use change. The LDPE and PVA figures they
+# are compared against are unpacked-resin-at-factory-gate eco-profiles. That
+# mismatch inflates this material. Use --scenario harmonised_boundary for the
+# like-for-like comparison.
 # =============================================================================
 [[materials]]
 id       = "biofilm"
@@ -173,6 +210,7 @@ role     = "Proposed replacement"
 summary  = "Solvent-cast and dehydrated film from sodium alginate, zein and stearic acid. All three components are biogenic, so the film carries a biogenic carbon credit at uptake and returns that carbon at end of life."
 
 [[materials.composition]]
+id               = "alginate"
 component        = "Sodium alginate"
 mass_fraction    = 0.60
 frac_confidence  = "placeholder"
@@ -184,10 +222,12 @@ value      = 21.29
 low        = 4.00
 high       = 21.30
 confidence = "literature"
-source     = "CarbonCloud ClimateHub product report, sodium alginate (E401): 21.29 kg CO2e/kg, cradle-to-gate. Independently corroborated by a seaweed-biorefinery LCA reporting 7042.7 kg CO2e per tonne dry seaweed yielding 338 kg alginate = 20.8 kg CO2e/kg if unallocated."
-note       = "Two independent routes landing near 21 is reassuring, but the biorefinery figure is UNALLOCATED across co-products so it is an upper bound, not a confirmation. The 4.00 lower bound comes from Sargassum-derived calcium alginate composite bioplastics reported at 4-5.9 kg CO2e/kg of finished bioplastic (RSC Green Chem., 2023, 25, 5501), a different feedstock and process. Hotspots in every source are seaweed drying and extraction yield, so this value is highly process-specific. Do not treat 21.29 as the footprint of THIS film's alginate without a supplier-specific figure."
+boundary   = "retail_shelf"
+source     = "CarbonCloud ClimateHub product report, sodium alginate (E401): 21.29 kg CO2e/kg."
+note       = "BOUNDARY MISMATCH: CarbonCloud's stated boundary runs from agricultural inputs to the retail shelf and covers agriculture, transport, refinement, PACKAGING, STORAGE and waste, with deforestation included in the agricultural engine. That is materially wider than the unpacked-resin-at-factory-gate basis of the LDPE and PVA figures, so 21.29 is biased HIGH for this comparison. The direction of the bias is known; its size is not. Corroboration that alginate is genuinely high-impact regardless: a seaweed-biorefinery LCA gives ~20.8 kg CO2e/kg if unallocated across co-products, and alginate composite films are reported at 3-7x PLA and PET, i.e. roughly 7-20 kg CO2e/kg, driven by chemical consumption in extraction. Lower bound 4.00 is Sargassum calcium-alginate bioplastic at 4-5.9 kg CO2e/kg (RSC Green Chem., 2023, 25, 5501)."
 
 [[materials.composition]]
+id               = "zein"
 component        = "Zein"
 mass_fraction    = 0.30
 frac_confidence  = "placeholder"
@@ -198,10 +238,12 @@ value      = 3.00
 low        = 1.00
 high       = 760.00
 confidence = "placeholder"
+boundary   = "factory_gate"
 source     = "NO CREDIBLE INDUSTRIAL FIGURE FOUND. The only located zein LCA (RSC Green Chem., 2026, 'Life cycle assessment of zein, ethyl lactate, and derivative nanofiltration membranes') reports 760 and 5300 kg CO2e per kg zein for lab-scale solvent extraction routes -- three orders of magnitude above any plausible commercial value, and dominated by solvent use at laboratory scale."
 note       = "Central value is a PROXY, not a measurement: zein is a co-product of corn wet milling, whose corn-derived streams sit near 0.65-1.75 kg CO2e/kg (CarbonCloud corn starch/flour reports), uplifted for the ethanol extraction and drying needed to isolate zein from corn gluten meal. The upper bound of 760 is retained deliberately: it is what the only published number says, and hiding it would misrepresent how unresolved this input is. THIS IS THE WEAKEST INPUT IN THE MODEL."
 
 [[materials.composition]]
+id               = "stearic_acid"
 component        = "Stearic acid"
 mass_fraction    = 0.10
 frac_confidence  = "placeholder"
@@ -213,8 +255,9 @@ value      = 11.20
 low        = 3.40
 high       = 11.20
 confidence = "literature"
+boundary   = "retail_shelf"
 source     = "CarbonCloud ClimateHub product report, stearic acid (E570): 11.20 kg CO2e/kg."
-note       = "Single-source figure, food-grade, and almost certainly includes palm land-use change. Lower bound 3.40 is RSPO-certified crude palm oil at 3.41 kg CO2e/kg (non-certified 5.34), i.e. the feedstock alone before splitting, fractionation and hydrogenation -- so 3.40 is a hard floor, not a likely value. Tallow-derived stearic acid would sit at a different point entirely depending on the allocation taken against the meat co-product."
+note       = "BOUNDARY MISMATCH, same as alginate: food-ingredient basis including packaging, storage and land-use change, so biased HIGH against the factory-gate figures it is compared with. Almost certainly carries palm land-use change. Lower bound 3.40 is RSPO-certified crude palm oil at 3.41 kg CO2e/kg (non-certified 5.34) -- the feedstock alone, before splitting, fractionation and hydrogenation, so a hard floor rather than a likely value. An ecoinvent 'stearic acid production' dataset exists and would be the right source here; it could not be retrieved in this session and remains the outstanding gap. Tallow-derived stearic acid would sit elsewhere entirely depending on the allocation taken against the meat co-product."
 
 [[materials.stages]]
 id         = "processing"
@@ -223,6 +266,7 @@ value      = 0.30
 low        = 0.20
 high       = 0.60
 confidence = "estimate"
+boundary   = "process"
 source     = ""
 note       = "Comparable to other solvent-cast film processes. Upper bound allows for the high water load of an alginate casting solution; dehydration energy scales with solids content, which is unknown here."
 
@@ -233,6 +277,7 @@ value      = 0.10
 low        = 0.05
 high       = 0.20
 confidence = "estimate"
+boundary   = "eol"
 source     = "Composting operations energy only. Carbon release is modelled separately from carbon content, see the fractions below."
 note       = "`value` is fossil CO2e from collection and site operations. The biogenic carbon released is computed by the model from the blend's carbon content, so it always mirrors the biogenic credit and cannot drift out of step with it."
 biogenic_carbon_released_fraction = 0.95
@@ -249,6 +294,7 @@ value      = 0.05
 low        = 0.02
 high       = 0.10
 confidence = "estimate"
+boundary   = "eol"
 source     = ""
 note       = "Site operations only; the methane burden is computed from carbon content below."
 biogenic_carbon_released_fraction = 0.50
@@ -260,11 +306,12 @@ release_note       = "Half the carbon degrades on a 100-year horizon, half of th
 
 [[materials.eol_routes]]
 id         = "incineration"
-label      = "End of life: incineration (no energy-recovery credit)"
+label      = "End of life: incineration"
 value      = 0.05
 low        = 0.02
 high       = 0.10
 confidence = "estimate"
+boundary   = "eol"
 source     = ""
 note       = "Fossil CO2e from plant operations only. All biogenic carbon is released as CO2, computed from carbon content."
 biogenic_carbon_released_fraction = 1.00
@@ -275,6 +322,11 @@ release_source     = "Complete oxidation."
 release_note       = ""
 
 [[materials.qualitative_flags]]
+severity = "high"
+topic    = "Raw-material figures sit on a wider boundary than the materials they are compared with"
+text     = "Alginate and stearic acid central values are food-ingredient figures running to the retail shelf and including packaging, storage and land-use change. LDPE and PVA are unpacked-resin-at-factory-gate eco-profiles. The default scenario therefore OVERSTATES the biomaterial by an unknown amount. Run --scenario harmonised_boundary to see the like-for-like comparison, and treat the gap between the two as a measure of how much this sourcing problem matters."
+
+[[materials.qualitative_flags]]
 severity = "medium"
 topic    = "Formulation is reconstructed"
 text     = "All three blend ratios are placeholders. Because the component footprints differ by a factor of ~7 (alginate 21.29 vs zein proxy 3.00), the blend ratio is not a detail -- it moves the raw-material total materially. Replace with the real recipe before quoting any number from this model."
@@ -283,3 +335,56 @@ text     = "All three blend ratios are placeholders. Because the component footp
 severity = "medium"
 topic    = "Seaweed sequestration not credited"
 text     = "Only the carbon embodied in the film itself is credited. Any wider blue-carbon or nutrient-remediation benefit from seaweed cultivation is excluded, as is any land-use-change burden from the palm-derived stearic acid beyond what the source figure already contains."
+
+
+# =============================================================================
+# SCENARIOS
+# =============================================================================
+# Named override sets. Each override addresses one input by path:
+#   <material_id>/stage/<stage_id>
+#   <material_id>/component/<component_id>
+#   <material_id>/eol/<route_id>
+# Add or edit scenarios here; no code change is needed.
+# =============================================================================
+
+[scenarios.default]
+label       = "As sourced"
+description = "Every value exactly as found. Contains the known boundary mismatch on alginate and stearic acid, so it overstates the biomaterial film."
+
+[scenarios.harmonised_boundary]
+label       = "Harmonised boundary (like-for-like)"
+description = "Replaces the two food-database, retail-shelf figures with the lowest independently sourced values available on a comparable industrial basis. This is the fairest comparison the current evidence supports, and it is still not a clean one -- both substitutes are lower bounds rather than best estimates, so this scenario is optimistic for the biomaterial in the same way the default is pessimistic. The truth is somewhere between the two."
+
+[[scenarios.harmonised_boundary.overrides]]
+path       = "biofilm/component/alginate"
+value      = 4.00
+low        = 4.00
+high       = 5.90
+confidence = "literature"
+boundary   = "factory_gate"
+source     = "Sargassum-derived calcium alginate composite bioplastic, 4-5.9 kg CO2e/kg (RSC Green Chem., 2023, 25, 5501)."
+note       = "Process- and feedstock-specific and measured on a composite bioplastic rather than isolated alginate, so this is a lower bound, not a like-for-like substitute for the CarbonCloud figure."
+
+[[scenarios.harmonised_boundary.overrides]]
+path       = "biofilm/component/stearic_acid"
+value      = 3.40
+low        = 3.40
+high       = 5.34
+confidence = "literature"
+boundary   = "factory_gate"
+source     = "RSPO-certified crude palm oil 3.41 kg CO2e/kg; non-certified 5.34 kg CO2e/kg."
+note       = "Feedstock oil only, before splitting, fractionation and hydrogenation to stearic acid. A hard floor, not a best estimate -- the real figure is above this."
+
+[scenarios.zein_resolved]
+label       = "Zein resolved (illustrative)"
+description = "What the model would say if the zein placeholder were replaced by a sourced figure. Applied on top of nothing else, so it isolates the effect of closing the single largest uncertainty. The value itself is INVENTED for illustration and must never be quoted."
+
+[[scenarios.zein_resolved.overrides]]
+path       = "biofilm/component/zein"
+value      = 2.50
+low        = 2.00
+high       = 3.20
+confidence = "placeholder"
+boundary   = "factory_gate"
+source     = "ILLUSTRATIVE ONLY -- not a real figure. Kept tagged as a placeholder so the flag never comes off."
+note       = "Deliberately left as a placeholder tag. The point of this scenario is to show how much the RANGE collapses when the weakest input is closed, not to pretend the input has been closed."

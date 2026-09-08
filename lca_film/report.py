@@ -9,7 +9,8 @@ from __future__ import annotations
 
 from typing import Sequence
 
-from .calculate import Result, evaluate_all
+from .boundary import DESCRIPTIONS
+from .calculate import Result, evaluate, evaluate_all
 from .config import Study
 from .confidence import Confidence
 
@@ -23,6 +24,10 @@ def header(study: Study) -> list[str]:
     for key in ("functional_unit", "boundary", "gwp_method", "prepared"):
         if meta.get(key):
             out.append(f"{key.replace('_', ' ').title():<16}: {meta[key]}")
+    out.append(f"{'Scenario':<16}: {study.scenario} -- {study.scenario_label}")
+    if study.scenario_description:
+        for line in _wrap(study.scenario_description, 92):
+            out.append(f"{'':<18}{line}")
     out.append("")
     out.append("Confidence tags, shown against every number below:")
     for level in Confidence:
@@ -208,6 +213,7 @@ def full_report(study: Study, results: Sequence[Result] | None = None) -> str:
     sections = [
         header(study),
         comparison_table(results),
+        boundary_report(study),
         ascii_chart(results),
         breakdown(results),
         sensitivity(results),
@@ -215,3 +221,183 @@ def full_report(study: Study, results: Sequence[Result] | None = None) -> str:
         qualitative_flags(study),
     ]
     return "\n".join(line for section in sections for line in section)
+
+
+def boundary_report(study: Study) -> list[str]:
+    """Inputs measured on a different system boundary than the study targets.
+
+    Separate from the confidence system on purpose. Confidence answers "how well
+    do we know this number"; boundary answers "is this number even the right
+    quantity to be adding here". A value can score perfectly on the first and
+    still fail the second, and that is the more dangerous failure.
+    """
+    issues = study.boundary_issues()
+    out = [
+        RULE,
+        "BOUNDARY AUDIT  --  are these numbers measuring the same thing?",
+        RULE,
+        f"Study target boundary: {study.target_boundary!r}",
+        f"  {DESCRIPTIONS.get(study.target_boundary, '')}",
+        "",
+    ]
+    if not issues:
+        out.append("  No mismatches. Every raw-material input is on the target boundary.")
+        out.append("")
+        return out
+
+    out.append(f"  {len(issues)} input(s) NOT on the target boundary:")
+    out.append("")
+    for issue in issues:
+        for line in _wrap(issue.describe(), 92):
+            out.append(f"    {line}")
+        out.append(f"      {DESCRIPTIONS.get(issue.found, '')}")
+        out.append("")
+    out.append(
+        "  A mismatch is not a rounding error. It means the totals for that material "
+        "are not"
+    )
+    out.append(
+        "  like-for-like with the others, no matter how well sourced each individual "
+        "number is."
+    )
+    out.append("")
+    return out
+
+
+def trace(study: Study, material_id: str, route_id: str) -> list[str]:
+    """Line-by-line audit trail for one material on one route.
+
+    Prints the arithmetic, not just the answer, so any total in this model can
+    be checked by hand against its inputs.
+    """
+    material = study.material(material_id)
+    try:
+        route = next(r for r in material.eol_routes if r.id == route_id)
+    except StopIteration:
+        available = ", ".join(r.id for r in material.eol_routes)
+        raise KeyError(
+            f"material '{material_id}' has no end-of-life route '{route_id}'; "
+            f"available: {available}"
+        ) from None
+
+    result = evaluate(material, route, study.constants)
+    out = [
+        RULE,
+        f"AUDIT TRACE  --  {material.name}  /  {route.label}",
+        f"Scenario: {study.scenario} ({study.scenario_label})",
+        RULE,
+        "",
+    ]
+
+    if material.is_blend:
+        out.append("STEP 1. Raw materials, built up from the formulation")
+        out.append("")
+        out.append(
+            f"  {'Component':<20}{'Mass':>7}{'x':>3}{'kg CO2e/kg':>12}"
+            f"{'=':>3}{'Contribution':>14}  {'Tag':<12} Boundary"
+        )
+        out.append("  " + "-" * 96)
+        subtotal = 0.0
+        for c in material.composition:
+            contribution = c.mass_fraction.value * c.footprint.value
+            subtotal += contribution
+            tag = f"[{c.footprint.confidence.marker}]"
+            out.append(
+                f"  {c.name:<20}{c.mass_fraction.value:>7.2f}{'x':>3}"
+                f"{c.footprint.value:>12.2f}{'=':>3}{contribution:>14.4f}  "
+                f"{tag:<14}{c.footprint.boundary}"
+            )
+            if c.footprint.overridden_by:
+                out.append(f"  {'':<20}  overridden by scenario: {c.footprint.overridden_by}")
+        out.append("  " + "-" * 96)
+        out.append(f"  {'Raw material subtotal':<20}{subtotal:>39.4f}")
+        out.append("")
+    else:
+        out.append("STEP 1. Raw material (given directly, not a blend)")
+        out.append("")
+
+    out.append("STEP 2. Full account")
+    out.append("")
+    running = 0.0
+    for index, item in enumerate(result.items, start=1):
+        running += item.value
+        out.append(
+            f"  {index}. {item.label:<50}{item.value:>+10.4f}  "
+            f"[{item.confidence.marker:<11}]  running total {running:>+9.4f}"
+        )
+        if item.note:
+            for line in _wrap(item.note, 84):
+                out.append(f"         {line}")
+        out.append("")
+
+    out.append("  " + "=" * 96)
+    out.append(
+        f"  {'TOTAL':<53}{result.total:>+10.4f}  "
+        f"[{result.confidence.marker:<11}]  {result.flag}"
+    )
+    out.append(
+        f"  {'Range across input bounds':<53}"
+        f"{result.total_low:>10.2f} to {result.total_high:.2f}"
+    )
+    out.append("")
+
+    credit = [i for i in result.items if i.kind == "biogenic_credit"]
+    release = [i for i in result.items if i.kind == "eol_biogenic"]
+    out.append("STEP 3. Biogenic carbon check")
+    out.append("")
+    if not credit:
+        out.append(
+            "  No biogenic carbon credit applied. This material has no biogenic "
+            "carbon content,"
+        )
+        out.append("  so there is nothing to credit and nothing to return at end of life.")
+    else:
+        out.append(f"  Credit applied at uptake       {credit[0].value:>+10.4f}")
+        if release:
+            out.append(f"  Returned at end of life        {release[0].value:>+10.4f}")
+            net = credit[0].value + release[0].value
+            out.append(f"  Net biogenic carbon            {net:>+10.4f}")
+            out.append("")
+            if net > 0:
+                out.append(
+                    "  Net POSITIVE: the methane fraction of the released carbon costs "
+                    "more than the"
+                )
+                out.append("  carbon retained in compost is worth.")
+            elif net < 0:
+                out.append(
+                    "  Net NEGATIVE: some carbon stays sequestered rather than being "
+                    "released."
+                )
+            else:
+                out.append("  Net zero: everything credited at uptake is returned at end of life.")
+    out.append("")
+    return out
+
+
+def scenario_comparison(
+    studies: Sequence[Study], material_id: str | None = None
+) -> list[str]:
+    """Same materials and routes, side by side across scenarios."""
+    out = [RULE, "SCENARIO COMPARISON  (kg CO2e per kg)", RULE]
+    names = [s.scenario for s in studies]
+    out.append(f"{'Material / route':<46}" + "".join(f"{n[:20]:>21}" for n in names))
+    out.append(THIN)
+
+    rows: dict[str, list] = {}
+    for study in studies:
+        for result in evaluate_all(study):
+            if material_id and result.material.id != material_id:
+                continue
+            rows.setdefault(result.label, []).append(result)
+
+    for label, results in rows.items():
+        cells = "".join(
+            f"{r.total:>15.2f} [{r.confidence.marker[:3]}]" for r in results
+        )
+        out.append(f"{label[:45]:<46}{cells}")
+    out.append(THIN)
+    for study in studies:
+        out.append(f"  {study.scenario}: {study.scenario_label}")
+    out.append("")
+    return out
