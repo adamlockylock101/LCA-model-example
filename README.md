@@ -62,15 +62,17 @@ LDPE        -- landfill                   2.10   1.86- 2.50             2.10
 PVA         -- biodegradation (aqueous)   4.66   2.96- 5.85             4.66
 PVA         -- incineration               4.66   4.40- 5.85             4.66
 PVA         -- landfill                   2.76   2.58- 4.15             2.76
-Biomaterial -- industrial composting     14.70 !! 13.57-16.71           4.33 !!
-Biomaterial -- landfill                  15.09 !! 13.98-17.05           4.72 !!
-Biomaterial -- incineration              14.45 !! 13.34-16.41           4.08 !!
+Biomaterial -- industrial composting     16.32 !! 10.86-18.33           5.95 !!
+Biomaterial -- landfill                  16.71 !! 11.27-18.67           6.34 !!
+Biomaterial -- incineration              16.07 !! 10.63-18.03           5.70 !!
                                          !! = placeholder-based
 ```
 
 The biomaterial range was **3.49–242.90** before scope variants were separated
 from parametric uncertainty. Nothing about the evidence changed; the model
-stopped reporting a category error as an uncertainty interval.
+stopped reporting a category error as an uncertainty interval. Both remaining
+spans are now tied to a **named parameter** — extraction yield for alginate,
+solvent recovery rate for zein.
 
 ### Two different ways source figures disagree
 
@@ -99,27 +101,29 @@ A variant declared `comparable = false` must state `why_not_comparable`, and the
 loader **refuses** to let its value be used as a `low` or `high`. `--scenario`
 can pull one by id, so a scenario cannot drift from the variant it claims to use.
 
-**3. Unquantified uncertainty — drivers with no number.** Alginate's range is now
-20.80–21.30, which would read as a 2% uncertainty. It is not. It is the
-*agreement between the only two sources measuring purified alginate*. What
-actually makes it uncertain — extraction yield, biorefinery co-product
-allocation, the retail-shelf correction, purification depth — carries no
-defensible number and so sits in an `unquantified` list printed next to the
-value. A short bar in the sensitivity ranking is not a settled input, and the
-report says so.
+**3. Unquantified uncertainty — drivers with no number.** A range is only as
+meaningful as the parameter behind it. Alginate's 13.60–22.79 is *extraction
+yield*; zein's 6.37–10.43 is *solvent recovery rate*. What each range does **not**
+cover — biorefinery co-product allocation, the retail-shelf correction,
+purification depth, species and season, whether the assumed recovery rate is
+achievable — carries no defensible number and sits in an `unquantified` list
+printed next to the value. A short bar in the sensitivity ranking is not a
+settled input, and the report says so.
 
 ### What the model says
 
 1. **The biogenic carbon credit is applied, and it is small.** −1.66 kg CO2e/kg,
    computed from the blend's actual 45.3% carbon content. Even at its most
    favourable it cannot offset a raw-material burden of 3.6–14.8.
-2. **Alginate dominates, and it is genuinely high-impact.** Three independent
-   sources agree: CarbonCloud 21.29; a seaweed biorefinery at ~20.8 unallocated;
-   alginate composite films reported at 3–7x PLA and PET, i.e. ~7–20. Seaweed
-   drying and extraction chemistry are the hotspots. Bio-based is not low-carbon
-   by default.
-3. **Zein alone carries 239 kg CO2e/kg of range**, ~150x the next most uncertain
-   input. Everything else is noise until that is closed.
+2. **Alginate dominates, and it is genuinely high-impact.** The two sources that
+   measure purified alginate agree closely: CarbonCloud 21.29 and a seaweed
+   biorefinery at ~20.8 unallocated. Seaweed drying and extraction chemistry are
+   the hotspots. Bio-based is not low-carbon by default.
+3. **Zein was under-estimated, not over-estimated.** The old 3.00 proxy came from
+   corn-stream footprints and missed that ≥95% of zein's impact is extraction
+   *solvent*, not feedstock. The derived industrial figure is **8.40**, and the
+   sensitivity ranking is now usable: the top parametric driver is 6.92
+   kg CO2e/kg, not 239.
 4. **PVA looks decent on GWP and that is the trap.** Its biodegradation range
    (0.40–2.00) goes *down* when less of it mineralises, because the polymer
    persists as fragments instead. A lower number there is not an improvement.
@@ -183,7 +187,8 @@ STEP 3. Biogenic carbon check
 | LDPE resin | 1.80 (1.70–2.00) | factory gate | PlasticsEurope LDPE eco-profile | European average |
 | LDPE incineration | 2.90 (2.80–3.14) | eol | Combustion of fossil carbon | Upper bound is stoichiometric max; 2.90 implies ~92% oxidation |
 | PVA resin | 2.36 (2.36–3.40) | factory gate | [Kuraray KURARAY POVAL™ LCA, 2024](https://www.kuraray-poval.com/further-news/kuraray-performs-lcas-to-make-the-sustainability-of-its-products-more-transparent) | **Manufacturer's own site LCA — a best case, not an industry average.** Kuraray states it is ~30% below the database average, implying ~3.4 generic; that is the upper bound |
-| Sodium alginate | 21.29 (4.00–21.30) | **retail shelf** ⚠ | [CarbonCloud ClimateHub E401](https://apps.carboncloud.com/climatehub/product-reports/id/1360585117747) | **Boundary mismatch.** Corroborated at ~20.8 by a seaweed biorefinery (unallocated, so an upper bound) and by alginate composites at 3–7x PLA/PET. Floor 4.00 from Sargassum calcium-alginate bioplastic, 4–5.9 ([RSC *Green Chem.* 2023, **25**, 5501](https://pubs.rsc.org/en/content/articlelanding/2023/gc/d3gc01019h)) |
+| Sodium alginate | 21.29 (13.60–22.79) | **retail shelf** ⚠ | [CarbonCloud ClimateHub E401](https://apps.carboncloud.com/climatehub/product-reports/id/1360585117747), corroborated at ~20.8 by a seaweed biorefinery | **Boundary mismatch, still open.** Range is **yield-derived**: published *Laminaria digitata* yields span 30.9%–51.8% of dry biomass, and rescaling the 20.83 figure from its 33.8% yield basis across that span gives 13.60–22.79. The 4.00 Sargassum figure ([RSC *Green Chem.* 2023, **25**, 5501](https://pubs.rsc.org/en/content/articlelanding/2023/gc/d3gc01019h)) is a scope variant, not a bound |
+| Zein | 8.40 (6.37–10.43) `DER` | factory gate | Derived from RSC *Green Chem.* 2026 zein LCA | **Not measured.** That study reports four scenarios — CGM 232 (IPA) / 107 (EtOH), DDGS 5300 / 760 — and attributes ≥95% of impact to extraction solvent. Taking the best (107) and rescaling that share for industrial closed-loop recovery: `107 × (0.95 × (1−recovery) + 0.05)` gives 6.37 at 99% and 10.43 at 95%. **The recovery rate is assumed, not sourced** — the paper's own reuse case (67%) would give 38.89 |
 | Stearic acid | 4.30 (3.40–5.30) `DER` | factory gate | Interpolated between [Shah et al., *J. Surfactants Deterg.* 2016, **19**, 1333–1351](https://doi.org/10.1007/s11743-016-1867-y) (palm-kernel fatty alcohol 5.27, petro 2.97) and RSPO crude palm oil 3.41 | **Not a measured stearic acid figure.** Stearic acid is the feedstock plus splitting, fractionation and hydrogenation; fatty alcohol is that route plus two further steps, so stearic acid brackets between 3.41 and 5.27. The ecoinvent dataset is still the right source — see below |
 | PVA degradation extent | qualitative | — | [Rolsky & Kelkar, *IJERPH* 2021, **18**, 6027](https://doi.org/10.3390/ijerph18116027) vs. [SciPinion panel, 2024](https://scipinion.com/panel-findings/scipinion-expert-panel-reinforces-pva-in-laundry-products-is-readily-biodegradable/) / [ACI](https://www.cleaninginstitute.org/pva) | Genuinely contested, left contested |
 | Compost carbon release | 95% | eol | Patel et al. (2018), reused across compostable-plastic LCAs | Residual ~5% retained as stabilised carbon |
@@ -200,13 +205,16 @@ STEP 3. Biogenic carbon check
 
 ### Still unsourced
 
-- **Zein** — the weakest input. The only located zein LCA (RSC *Green Chem.*
-  2026) reports **760 and 5300 kg CO2e/kg** for lab-scale solvent extraction,
-  three orders of magnitude above any plausible commercial value. The central
-  3.00 is a proxy from corn wet-milling streams (0.65–1.75) uplifted for ethanol
-  extraction and drying. The 760 upper bound is kept deliberately.
 - **All three blend ratios** — reconstructed, not measured, and they move the
-  raw-material total materially.
+  raw-material total materially. These are now the **only** placeholder inputs
+  left, and they are why every biomaterial row is still flagged.
+- **A factory-gate purified-alginate figure** — the remaining boundary mismatch.
+- **A measured industrial zein figure** to replace the derived one; above all a
+  stated **solvent recovery rate**, the parameter the derivation turns on.
+
+See [`SOURCING.md`](SOURCING.md) for exactly what a candidate must state before
+it can be accepted — written after three inputs turned out to be wrong in three
+different ways.
 - Processing energies; landfill release fraction, methane share and capture rate.
 
 ## Limitations
