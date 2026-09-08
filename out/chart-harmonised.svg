@@ -84,24 +84,24 @@
 <line class="rule" x1="24" y1="382.0" x2="1046" y2="382.0"/>
 <text class="t-row" x="24" y="400.0" font-weight="700">Biomaterial film (alginate / zein / stearic acid)</text>
 <text class="t-row" x="236" y="424.0" text-anchor="end" fill="var(--ink-2)">industrial composting</text>
-<rect x="250" y="410.0" width="368.9" height="20" rx="4" fill="var(--s-biofilm, #1baf7a)"/>
-<rect x="250" y="410.0" width="368.9" height="20" rx="4" fill="url(#ph)"/><rect class="flagged" x="250" y="410.0" width="368.9" height="20" rx="4"/>
+<rect x="250" y="410.0" width="376.7" height="20" rx="4" fill="var(--s-biofilm, #1baf7a)"/>
+<rect x="250" y="410.0" width="376.7" height="20" rx="4" fill="url(#ph)"/><rect class="flagged" x="250" y="410.0" width="376.7" height="20" rx="4"/>
 <line class="whisker" x1="553.6" y1="420.0" x2="790.0" y2="420.0"/><line class="whisker" x1="553.6" y1="415.0" x2="553.6" y2="425.0"/>
 <path d="M782.0 415.0 L788.0 420.0 L782.0 425.0" fill="none" stroke="var(--alert)" stroke-width="1.8"/>
-<text class="t-val" x="816" y="419.0">4.24<tspan class="t-tag" dx="6">[PLACEHOLDER]</tspan></text>
+<text class="t-val" x="816" y="419.0">4.33<tspan class="t-tag" dx="6">[PLACEHOLDER]</tspan></text>
 <text class="t-alert" x="816" y="432.0" font-size="10.5" font-weight="400">range 3.49 to 233.07</text>
 <text class="t-row" x="236" y="458.0" text-anchor="end" fill="var(--ink-2)">landfill</text>
-<rect x="250" y="444.0" width="403.0" height="20" rx="4" fill="var(--s-biofilm, #1baf7a)"/>
-<rect x="250" y="444.0" width="403.0" height="20" rx="4" fill="url(#ph)"/><rect class="flagged" x="250" y="444.0" width="403.0" height="20" rx="4"/>
+<rect x="250" y="444.0" width="410.9" height="20" rx="4" fill="var(--s-biofilm, #1baf7a)"/>
+<rect x="250" y="444.0" width="410.9" height="20" rx="4" fill="url(#ph)"/><rect class="flagged" x="250" y="444.0" width="410.9" height="20" rx="4"/>
 <line class="whisker" x1="589.5" y1="454.0" x2="790.0" y2="454.0"/><line class="whisker" x1="589.5" y1="449.0" x2="589.5" y2="459.0"/>
 <path d="M782.0 449.0 L788.0 454.0 L782.0 459.0" fill="none" stroke="var(--alert)" stroke-width="1.8"/>
-<text class="t-val" x="816" y="453.0">4.63<tspan class="t-tag" dx="6">[PLACEHOLDER]</tspan></text>
+<text class="t-val" x="816" y="453.0">4.72<tspan class="t-tag" dx="6">[PLACEHOLDER]</tspan></text>
 <text class="t-alert" x="816" y="466.0" font-size="10.5" font-weight="400">range 3.90 to 233.41</text>
 <text class="t-row" x="236" y="492.0" text-anchor="end" fill="var(--ink-2)">incineration</text>
-<rect x="250" y="478.0" width="347.5" height="20" rx="4" fill="var(--s-biofilm, #1baf7a)"/>
-<rect x="250" y="478.0" width="347.5" height="20" rx="4" fill="url(#ph)"/><rect class="flagged" x="250" y="478.0" width="347.5" height="20" rx="4"/>
+<rect x="250" y="478.0" width="355.3" height="20" rx="4" fill="var(--s-biofilm, #1baf7a)"/>
+<rect x="250" y="478.0" width="355.3" height="20" rx="4" fill="url(#ph)"/><rect class="flagged" x="250" y="478.0" width="355.3" height="20" rx="4"/>
 <line class="whisker" x1="533.9" y1="488.0" x2="790.0" y2="488.0"/><line class="whisker" x1="533.9" y1="483.0" x2="533.9" y2="493.0"/>
 <path d="M782.0 483.0 L788.0 488.0 L782.0 493.0" fill="none" stroke="var(--alert)" stroke-width="1.8"/>
-<text class="t-val" x="816" y="487.0">3.99<tspan class="t-tag" dx="6">[PLACEHOLDER]</tspan></text>
+<text class="t-val" x="816" y="487.0">4.08<tspan class="t-tag" dx="6">[PLACEHOLDER]</tspan></text>
 <text class="t-alert" x="816" y="500.0" font-size="10.5" font-weight="400">range 3.26 to 232.77</text>
 </svg>

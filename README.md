@@ -34,7 +34,7 @@ python3 -m lca_film --placeholders                    # what still needs a sourc
 python3 -m lca_film --svg out/chart.svg --csv out.csv # artefacts
 python3 -m lca_film --inputs mine.toml                # a different dataset
 
-python3 -m unittest discover -s tests                 # 64 tests
+python3 -m unittest discover -s tests                 # 71 tests
 ```
 
 Change one input without touching the file:
@@ -56,16 +56,16 @@ cannot smuggle in a `literature` tag with no citation.
 Two scenarios, because the honest answer depends on a sourcing decision:
 
 ```
-                                          as sourced   harmonised boundary
-LDPE          -- incineration                   4.95                  4.95
-LDPE          -- landfill                       2.10                  2.10
-PVA           -- biodegradation (aqueous)       4.66                  4.66
-PVA           -- incineration                   4.66                  4.66
-PVA           -- landfill                       2.76                  2.76
-Biomaterial   -- industrial composting         15.39 !!               4.24 !!
-Biomaterial   -- landfill                      15.78 !!               4.63 !!
-Biomaterial   -- incineration                  15.14 !!               3.99 !!
-                                               !! = placeholder-based
+                                        default   harmonised   food-database
+LDPE        -- incineration                4.95         4.95            4.95
+LDPE        -- landfill                    2.10         2.10            2.10
+PVA         -- biodegradation (aqueous)    4.66         4.66            4.66
+PVA         -- incineration                4.66         4.66            4.66
+PVA         -- landfill                    2.76         2.76            2.76
+Biomaterial -- industrial composting      14.70 !!      4.33 !!        15.39 !!
+Biomaterial -- landfill                   15.09 !!      4.72 !!        15.78 !!
+Biomaterial -- incineration               14.45 !!      4.08 !!        15.14 !!
+                                          !! = placeholder-based
 ```
 
 ### Why the biomaterial moves by 4x between those columns
@@ -90,9 +90,25 @@ results. `--scenario harmonised_boundary` substitutes the lowest independently
 sourced values on a comparable industrial basis.
 
 Neither column is the answer. The default is pessimistic for the biomaterial;
-the harmonised scenario is optimistic, because both substitutes are lower bounds
-rather than best estimates. The truth sits between 4.2 and 15.4, and closing
-that gap needs supplier-specific data, not more searching.
+the harmonised scenario is optimistic, because the alginate substitute is a
+lower bound rather than a best estimate. The truth sits between roughly 4.3 and
+14.7, and closing that gap needs supplier-specific data, not more searching.
+
+### The ecoinvent stearic acid figure could not be retrieved
+
+The `ecoinvent` *stearic acid production* dataset exists (v3.6 through v3.10) and
+is the correct source for this input. It is not in the model because:
+
+- **Climatiq**, which indexes it, states it cannot publish raw ecoinvent factors
+  under its licence terms — so this is a licensing wall, not a fetching problem.
+- The **ecoinvent portal**, **GLAD**, and journal hosts carrying papers that cite
+  the dataset are all blocked by this environment's egress policy.
+
+Rather than leave a food-database figure on the wrong boundary, the input is now
+**interpolated between two published cradle-to-gate anchors on the same palm
+oleochemical chain** and tagged `DER`, with the bracket pinned by tests. If you
+have ecoinvent access, replacing it is a one-line edit to `inputs.toml` and the
+single easiest upgrade left in this model.
 
 ### What the model says
 
@@ -169,8 +185,8 @@ STEP 3. Biogenic carbon check
 | LDPE resin | 1.80 (1.70–2.00) | factory gate | PlasticsEurope LDPE eco-profile | European average |
 | LDPE incineration | 2.90 (2.80–3.14) | eol | Combustion of fossil carbon | Upper bound is stoichiometric max; 2.90 implies ~92% oxidation |
 | PVA resin | 2.36 (2.36–3.40) | factory gate | [Kuraray KURARAY POVAL™ LCA, 2024](https://www.kuraray-poval.com/further-news/kuraray-performs-lcas-to-make-the-sustainability-of-its-products-more-transparent) | **Manufacturer's own site LCA — a best case, not an industry average.** Kuraray states it is ~30% below the database average, implying ~3.4 generic; that is the upper bound |
-| Sodium alginate | 21.29 (4.00–21.30) | **retail shelf** | [CarbonCloud ClimateHub E401](https://apps.carboncloud.com/climatehub/product-reports/id/1360585117747) | **Boundary mismatch.** Corroborated at ~20.8 by a seaweed biorefinery (unallocated, so an upper bound) and by alginate composites at 3–7x PLA/PET. Floor 4.00 from Sargassum calcium-alginate bioplastic, 4–5.9 ([RSC *Green Chem.* 2023, **25**, 5501](https://pubs.rsc.org/en/content/articlelanding/2023/gc/d3gc01019h)) |
-| Stearic acid | 11.20 (3.40–11.20) | **retail shelf** | [CarbonCloud ClimateHub E570](https://apps.carboncloud.com/climatehub/product-reports/id/3611333312577) | **Boundary mismatch**; almost certainly carries palm land-use change. Floor 3.40 is RSPO crude palm oil (non-certified 5.34), feedstock only. An ecoinvent *stearic acid production* dataset exists and is the right source — it could not be retrieved here and is the outstanding gap |
+| Sodium alginate | 21.29 (4.00–21.30) | **retail shelf** ⚠ | [CarbonCloud ClimateHub E401](https://apps.carboncloud.com/climatehub/product-reports/id/1360585117747) | **Boundary mismatch.** Corroborated at ~20.8 by a seaweed biorefinery (unallocated, so an upper bound) and by alginate composites at 3–7x PLA/PET. Floor 4.00 from Sargassum calcium-alginate bioplastic, 4–5.9 ([RSC *Green Chem.* 2023, **25**, 5501](https://pubs.rsc.org/en/content/articlelanding/2023/gc/d3gc01019h)) |
+| Stearic acid | 4.30 (3.40–5.30) `DER` | factory gate | Interpolated between [Shah et al., *J. Surfactants Deterg.* 2016, **19**, 1333–1351](https://doi.org/10.1007/s11743-016-1867-y) (palm-kernel fatty alcohol 5.27, petro 2.97) and RSPO crude palm oil 3.41 | **Not a measured stearic acid figure.** Stearic acid is the feedstock plus splitting, fractionation and hydrogenation; fatty alcohol is that route plus two further steps, so stearic acid brackets between 3.41 and 5.27. The ecoinvent dataset is still the right source — see below |
 | PVA degradation extent | qualitative | — | [Rolsky & Kelkar, *IJERPH* 2021, **18**, 6027](https://doi.org/10.3390/ijerph18116027) vs. [SciPinion panel, 2024](https://scipinion.com/panel-findings/scipinion-expert-panel-reinforces-pva-in-laundry-products-is-readily-biodegradable/) / [ACI](https://www.cleaninginstitute.org/pva) | Genuinely contested, left contested |
 | Compost carbon release | 95% | eol | Patel et al. (2018), reused across compostable-plastic LCAs | Residual ~5% retained as stabilised carbon |
 
@@ -219,6 +235,6 @@ lca_film/
   report.py          Tables, ASCII chart, sensitivity, boundary audit, --trace
   chart.py           Dependency-free themed SVG chart
   __main__.py        CLI
-tests/test_lca.py    64 tests
+tests/test_lca.py    71 tests
 out/                 Generated charts (regenerate with --svg)
 ```

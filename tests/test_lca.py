@@ -268,6 +268,50 @@ class TestDerivedNumbers(unittest.TestCase):
             )
 
 
+class TestStearicAcidDerivation(unittest.TestCase):
+    """The stearic acid value is interpolated, so its bracket must hold.
+
+    Lower anchor: RSPO-certified crude palm oil, 3.41 kg CO2e/kg -- the feedstock
+    before any oleochemical conversion. Upper anchor: palm-kernel-oil fatty
+    alcohol, 5.27 kg CO2e/kg (Shah et al., J. Surfactants Deterg. 2016, 19,
+    1333-1351), which is the same route plus two further conversion steps.
+    Stearic acid sits between them by construction; if an edit moves it outside
+    that bracket, the stated derivation no longer holds and this fails.
+    """
+
+    PALM_OIL_FEEDSTOCK = 3.41
+    FATTY_ALCOHOL_DOWNSTREAM = 5.27
+
+    def setUp(self):
+        self.stearic = next(
+            c for c in load_study().material("biofilm").composition
+            if c.id == "stearic_acid"
+        )
+
+    def test_value_sits_between_its_two_published_anchors(self):
+        value = self.stearic.footprint.value
+        self.assertGreater(value, self.PALM_OIL_FEEDSTOCK)
+        self.assertLess(value, self.FATTY_ALCOHOL_DOWNSTREAM)
+
+    def test_value_is_the_midpoint_of_the_bracket(self):
+        midpoint = (self.PALM_OIL_FEEDSTOCK + self.FATTY_ALCOHOL_DOWNSTREAM) / 2
+        self.assertAlmostEqual(self.stearic.footprint.value, midpoint, delta=0.06)
+
+    def test_range_spans_the_bracket(self):
+        self.assertLessEqual(self.stearic.footprint.low_or_value, self.PALM_OIL_FEEDSTOCK)
+        self.assertGreaterEqual(
+            self.stearic.footprint.high_or_value, self.FATTY_ALCOHOL_DOWNSTREAM
+        )
+
+    def test_it_is_tagged_derived_not_literature(self):
+        """An interpolation between two sources is not itself a sourced figure."""
+        self.assertIs(self.stearic.footprint.confidence, Confidence.DERIVED)
+        self.assertTrue(self.stearic.footprint.derivation)
+
+    def test_the_unretrieved_ecoinvent_source_is_recorded_as_the_gap(self):
+        self.assertIn("ecoinvent", self.stearic.footprint.note.lower())
+
+
 class TestBiogenicBalance(unittest.TestCase):
     """Uptake and release are computed from one carbon number, so they must tie."""
 
@@ -437,10 +481,24 @@ class TestBoundaryTracking(unittest.TestCase):
         self.study = load_study()
 
     def test_food_database_inputs_are_flagged_as_mismatched(self):
-        issues = self.study.boundary_issues()
-        labels = {i.input_label for i in issues}
-        self.assertIn("Sodium alginate raw material", labels)
-        self.assertIn("Stearic acid raw material", labels)
+        """Alginate is the one retail-shelf figure left in the default."""
+        labels = {i.input_label for i in self.study.boundary_issues()}
+        self.assertEqual(labels, {"Sodium alginate raw material"})
+
+    def test_stearic_acid_default_is_now_on_the_target_boundary(self):
+        stearic = next(
+            c for c in self.study.material("biofilm").composition
+            if c.id == "stearic_acid"
+        )
+        self.assertEqual(stearic.footprint.boundary, "factory_gate")
+
+    def test_food_database_scenario_reintroduces_both_mismatches(self):
+        """The contrast scenario must still show what the wider boundary costs."""
+        study = load_study(scenario="food_database_sourcing")
+        labels = {i.input_label for i in study.boundary_issues()}
+        self.assertEqual(
+            labels, {"Sodium alginate raw material", "Stearic acid raw material"}
+        )
 
     def test_mismatch_names_the_direction_of_the_bias(self):
         for issue in self.study.boundary_issues():
@@ -494,8 +552,8 @@ class TestScenarios(unittest.TestCase):
             if r.material.id == "biofilm" and r.route.id == "composting"
         )
         self.assertLess(after.total, before.total)
-        self.assertAlmostEqual(before.total, 15.39, places=2)
-        self.assertAlmostEqual(after.total, 4.24, places=2)
+        self.assertAlmostEqual(before.total, 14.70, places=2)
+        self.assertAlmostEqual(after.total, 4.33, places=2)
 
     def test_override_records_which_scenario_set_it(self):
         harmonised = load_study(scenario="harmonised_boundary")
@@ -576,7 +634,7 @@ class TestTrace(unittest.TestCase):
         self.assertIn("Credit applied at uptake", self.text)
 
     def test_trace_running_total_reaches_the_reported_total(self):
-        self.assertIn("15.3900", self.text)
+        self.assertIn("14.7000", self.text)
 
     def test_trace_reports_boundary_of_each_component(self):
         self.assertIn("retail_shelf", self.text)
@@ -612,7 +670,7 @@ class TestChartLayout(unittest.TestCase):
 
     def test_offscale_rows_state_the_real_number_in_text(self):
         svg = render_svg(self.results, "t")
-        self.assertIn("242.90", svg)  # never silently clipped
+        self.assertIn("242.31", svg)  # never silently clipped
 
     def test_svg_height_covers_every_row(self):
         """The last row must not fall off the bottom of the canvas."""
