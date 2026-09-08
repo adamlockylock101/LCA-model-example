@@ -17,20 +17,19 @@ Python 3.11+, **no dependencies** (stdlib `tomllib`, hand-written SVG).
 
 ## It is a tool, not a report
 
-Inputs go in, results come out. Every number lives in `inputs.toml`; nothing in
-`lca_film/` needs editing to change a value, a formulation, an end-of-life route
-or a scenario. Charts are rendered from live output.
+Inputs go in, results come out. Charts are rendered from live output, never
+hand-drawn.
 
 ```bash
 python3 -m lca_film                                   # full report
 python3 -m lca_film --table                           # comparison table
 python3 -m lca_film --trace biofilm/composting        # line-by-line arithmetic
 python3 -m lca_film --list-scenarios                  # what scenarios exist
-python3 -m lca_film --scenario harmonised_boundary    # run one
+python3 -m lca_film --scenario sargassum_route        # run one
 python3 -m lca_film --compare                         # scenarios side by side
 python3 -m lca_film --boundaries                      # system-boundary audit
 python3 -m lca_film --sensitivity                     # what moves the answer
-python3 -m lca_film --placeholders                    # what still needs a source
+python3 -m lca_film --placeholders                    # unverifiable inputs
 python3 -m lca_film --svg out/chart.svg --csv out.csv # artefacts
 python3 -m lca_film --inputs mine.toml                # a different dataset
 
@@ -53,7 +52,7 @@ cannot smuggle in a `literature` tag with no citation.
 
 ## Changing the inputs
 
-All numbers live in `inputs.toml`. Nothing in `lca_film/` needs editing to
+Every number lives in `inputs.toml`. Nothing in `lca_film/` needs editing to
 change a value, a formulation, an end-of-life route or a scenario.
 
 **The blend is stored as the recipe, in grams**, not as percentages:
