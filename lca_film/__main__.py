@@ -6,7 +6,7 @@ and any input can be changed without touching calculation code.
     python3 -m lca_film                                  full report
     python3 -m lca_film --table                          comparison table only
     python3 -m lca_film --list-scenarios                 what scenarios exist
-    python3 -m lca_film --scenario harmonised_boundary   run one
+    python3 -m lca_film --scenario sargassum_route       run one
     python3 -m lca_film --compare                        all scenarios side by side
     python3 -m lca_film --trace biofilm/composting       line-by-line arithmetic
     python3 -m lca_film --set biofilm/component/zein=2.0 ad-hoc what-if

@@ -196,12 +196,14 @@ text     = "PVA passes OECD 301 biodegradability screening, but that test does n
 # Raw-material footprint is BUILT UP from the blend components below, so the
 # formulation can be changed here without touching any calculation code.
 #
-# READ THE BOUNDARY WARNING. The alginate and stearic acid central values come
-# from a FOOD-ingredient database whose boundary runs to the retail shelf and
-# includes packaging, storage and land-use change. The LDPE and PVA figures they
-# are compared against are unpacked-resin-at-factory-gate eco-profiles. That
-# mismatch inflates this material. Use --scenario harmonised_boundary for the
-# like-for-like comparison.
+# READ THE BOUNDARY WARNING. The alginate central value comes from a
+# FOOD-ingredient database whose boundary runs to the retail shelf and includes
+# packaging, storage and land-use change. The LDPE and PVA figures it is
+# compared against are unpacked-resin-at-factory-gate eco-profiles. That
+# mismatch inflates this material by an unknown amount. Stearic acid was on the
+# same footing until it was replaced with a factory-gate figure; alginate cannot
+# be corrected the same way, because the size of the correction is unknown.
+# Run --boundaries for the audit.
 # =============================================================================
 [[materials]]
 id       = "biofilm"
@@ -386,7 +388,7 @@ release_note       = ""
 [[materials.qualitative_flags]]
 severity = "high"
 topic    = "Raw-material figures sit on a wider boundary than the materials they are compared with"
-text     = "Alginate and stearic acid central values are food-ingredient figures running to the retail shelf and including packaging, storage and land-use change. LDPE and PVA are unpacked-resin-at-factory-gate eco-profiles. The default scenario therefore OVERSTATES the biomaterial by an unknown amount. Run --scenario harmonised_boundary to see the like-for-like comparison, and treat the gap between the two as a measure of how much this sourcing problem matters."
+text     = "The alginate central value is a food-ingredient figure running to the retail shelf and including packaging, storage and land-use change. LDPE and PVA are unpacked-resin-at-factory-gate eco-profiles. The default scenario therefore OVERSTATES the biomaterial by an unknown amount. Stearic acid carried the same mismatch until a factory-gate figure replaced it; alginate cannot be corrected that way, because the correction is real but its SIZE is unknown and inventing one would reintroduce the error. There is deliberately no harmonised scenario. Run --boundaries for the audit."
 
 [[materials.qualitative_flags]]
 severity = "medium"

@@ -1,5 +1,14 @@
 # Anti-leak film LCA model
 
+> **New here, or not a materials engineer?** Read
+> **[`START-HERE.md`](START-HERE.md)** instead. This file is the full study and
+> assumes the domain; that one explains what was built and why, and needs none
+> of it. Or just run **`./demo.sh`** — a five-minute guided tour that ends with
+> the guardrails refusing bad input.
+>
+> [`DESIGN-NOTES.md`](DESIGN-NOTES.md) covers why each mechanism exists: three
+> sourcing failures, three structural fixes.
+
 A pluggable cradle-to-grave GHG model comparing three candidate materials for a
 sanitary product anti-leak film, in **kg CO2e per kg of finished film material**:
 
@@ -86,7 +95,7 @@ PVA         -- biodegradation (aqueous)   4.66   2.96- 5.85             4.66
 PVA         -- incineration               4.66   4.40- 5.85             4.66
 PVA         -- landfill                   2.76   2.58- 4.15             2.76
 Biomaterial -- industrial composting     15.50 !  10.32-17.40           5.62 !
-Biomaterial -- landfill                  15.92 !  10.77-17.78           6.03 !
+Biomaterial -- landfill                  15.92 !  10.77-17.78           6.04 !
 Biomaterial -- incineration              15.24 !  10.08-17.09           5.36 !
                                          !  = recalled input (unverifiable)
 ```
@@ -272,6 +281,10 @@ different ways.
 ## Layout
 
 ```
+START-HERE.md        What this is, for a reader who does not want the chemistry
+DESIGN-NOTES.md      Why each mechanism exists -- the failures that produced them
+SOURCING.md          What a candidate source must state before it is accepted
+demo.sh              Five-minute guided tour, guardrails included
 inputs.toml          ALL data + scenarios -- the only file to edit
 lca_film/
   confidence.py      Confidence tags and how they propagate
@@ -286,3 +299,6 @@ lca_film/
 tests/test_lca.py    88 tests
 out/                 Generated charts (regenerate with --svg)
 ```
+
+Add `./demo.sh` to the command list at the top: it runs the tour, and it asserts
+that each guardrail fails for the *expected reason* rather than merely failing.
