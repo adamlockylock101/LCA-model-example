@@ -187,9 +187,10 @@ EOF
 pause
 
 banner "9. The tests" \
-"59 of these 88 defend the provenance system rather than the arithmetic.
+"63 of these 92 defend the provenance system rather than the arithmetic.
 Values tagged 'derived' are re-derived here from molar masses, so they cannot
-drift if someone edits a number by hand."
+drift if someone edits a number by hand -- and four of them parse the README,
+check its figures against a live run, and execute every command it documents."
 
 run "$PY" -m unittest discover -s tests
 

@@ -145,9 +145,26 @@ Fixed in the same commit as these notes.
 
 The lesson isn't "be more careful." It is that **prose describing a model is
 unversioned state**, and this project had no mechanism binding it to the model
-it describes — while having an elaborate one for the numbers. The tests assert
-that derived values match the chemistry; nothing asserted that the documentation
-matched the code. That asymmetry is the actual defect, and it is still open.
+it describes — while having an elaborate one for the numbers. The tests asserted
+that derived values matched the chemistry; nothing asserted that the
+documentation matched the code. That asymmetry was the actual defect.
+
+**What got built** (`TestDocumentationMatchesTheModel`, four tests): the README
+is now parsed and checked against a live run. Every figure in the results table
+— both scenarios, both range bounds, and the `!` unverifiable-input marker —
+must match what the model computes. Every `value (low–high)` quoted in the
+sources table must be a real input in `inputs.toml`. Every number in the worked
+`--trace` example must appear in the real trace output. And every
+`python3 -m lca_film …` command in the README and `START-HERE.md` is extracted
+and **executed**, with a non-zero exit failing the suite.
+
+That last one is the direct fix for this failure: a documented command that
+errors is now a broken build. It is also the only one of the four that cannot
+itself go stale, because it runs the thing rather than describing it.
+
+Each check was verified by mutation — changing a README digit, dropping an `!`,
+or pointing a documented command at the deleted scenario, and confirming the
+suite goes red for that reason.
 
 ---
 
@@ -176,8 +193,10 @@ make a result unverifiable; only one means the number is invented.
 
 - **Write the acceptance criteria first.** `SOURCING.md` was written after the
   third failure. Two of the three would not have happened.
-- **Bind the prose to the model.** Every figure quoted in the README should be
-  generated from the model or asserted against it by a test. Failure 4 happened
-  twice for want of this.
+- **Bind the prose to the model from the start.** Now done, but only after
+  Failure 4 had happened twice. Documentation drift is the same failure class as
+  an unsourced number — a confident claim with nothing checking it — and it went
+  undefended here for eight commits while the numbers had four separate
+  mechanisms guarding them.
 - **Extract the provenance layer.** It is fused to this study, and it is the
   part that generalises.

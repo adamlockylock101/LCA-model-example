@@ -19,6 +19,8 @@ from __future__ import annotations
 
 import contextlib
 import io
+import re
+import shlex
 import sys
 import tempfile
 import unittest
@@ -896,3 +898,200 @@ class TestCli(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
+
+
+class TestDocumentationMatchesTheModel(unittest.TestCase):
+    """The prose must not drift from the model it describes.
+
+    This is the one class here that defends something other than the code. The
+    project has twice shipped documentation quoting figures the model no longer
+    produced, and once shipped a printed warning telling the reader to run a
+    scenario that had been deleted -- each time because a value was updated and
+    the sentence describing it was not. Numbers tagged 'derived' are re-derived
+    above so they cannot drift; nothing played that role for the prose, and an
+    unversioned English description of a model is exactly as capable of being
+    confidently wrong as an unsourced number is.
+    """
+
+    ROOT = Path(__file__).resolve().parent.parent
+    #: README shorthand -> material id.
+    MATERIALS = {"LDPE": "ldpe", "PVA": "pva", "Biomaterial": "biofilm"}
+    #: A row of the results block: label, default value, flag, range, variant value.
+    RESULT_ROW = re.compile(
+        r"^(?P<material>\S+)\s+--\s+(?P<route>.+?)\s{2,}"
+        r"(?P<value>\d+\.\d+)\s*(?P<flag>!?)\s+"
+        r"(?P<low>\d+\.\d+)\s*-\s*(?P<high>\d+\.\d+)\s+"
+        r"(?P<variant>\d+\.\d+)\s*(?P<variant_flag>!?)\s*$"
+    )
+    #: A "value (low-high)" cell in the sources table. The dash is an en dash.
+    SOURCE_FIGURE = re.compile(r"(\d+\.\d+)\s*\((\d+\.\d+)\s*[–-]\s*(\d+\.\d+)\)")
+
+    def setUp(self):
+        self.readme = (self.ROOT / "README.md").read_text(encoding="utf-8")
+
+    def _fenced_block(self, text: str, after: str) -> str:
+        """The first ``` fenced block following ``after``."""
+        start = text.index(after)
+        opening = text.index("```", start)
+        body_start = text.index("\n", opening) + 1
+        return text[body_start:text.index("```", body_start)]
+
+    def _route(self, material, described_as: str):
+        """Resolve a README route name against the model's own routes."""
+        wanted = described_as.strip().lower()
+        for route in material.eol_routes:
+            if wanted == route.id or wanted in route.label.lower():
+                return route
+        self.fail(
+            f"README names a route {described_as!r} for {material.id}, which has "
+            f"{[r.id for r in material.eol_routes]}"
+        )
+
+    def test_readme_results_block_matches_the_model(self):
+        """Every figure in the headline table, against a live run.
+
+        Both scenarios, both range bounds, and the unverifiable-input marker --
+        because a row silently losing its '!' would be the worst drift of all.
+        """
+        block = self._fenced_block(self.readme, "\n## Results")
+        by_scenario = {
+            name: evaluate_all(load_study(scenario=name))
+            for name in ("default", "sargassum_route")
+        }
+        study = load_study()
+
+        rows = [m for m in (self.RESULT_ROW.match(l) for l in block.splitlines()) if m]
+        self.assertEqual(len(rows), 8, "expected 8 result rows in the README block")
+
+        for row in rows:
+            material_id = self.MATERIALS[row["material"]]
+            material = study.material(material_id)
+            route = self._route(material, row["route"])
+            where = f"README row '{row['material']} -- {row['route']}'"
+
+            def result(scenario):
+                return next(
+                    r for r in by_scenario[scenario]
+                    if r.material.id == material_id and r.route.id == route.id
+                )
+
+            live = result("default")
+            self.assertAlmostEqual(
+                live.total, float(row["value"]), places=2,
+                msg=f"{where}: default total"
+            )
+            self.assertAlmostEqual(
+                live.total_low, float(row["low"]), places=2, msg=f"{where}: low bound"
+            )
+            self.assertAlmostEqual(
+                live.total_high, float(row["high"]), places=2, msg=f"{where}: high bound"
+            )
+            self.assertEqual(
+                bool(row["flag"]), live.is_unverified_based,
+                f"{where}: the '!' marker disagrees with the model",
+            )
+            self.assertAlmostEqual(
+                result("sargassum_route").total, float(row["variant"]), places=2,
+                msg=f"{where}: sargassum route total",
+            )
+
+    def test_readme_source_table_figures_are_real_inputs(self):
+        """Every 'value (low-high)' quoted in the sources table is a real input.
+
+        Two of the three sourcing failures this model has had were corrected in
+        inputs.toml while the README kept quoting the old figure, so this checks
+        the direction that actually broke.
+        """
+        quantities = set()
+        for material in load_study().materials:
+            for quantity in list(material.stages) + [
+                c.footprint for c in material.composition
+            ] + [r.fossil for r in material.eol_routes]:
+                quantities.add(
+                    (
+                        round(quantity.value, 2),
+                        round(quantity.low_or_value, 2),
+                        round(quantity.high_or_value, 2),
+                    )
+                )
+
+        table = self.readme[self.readme.index("## Where the numbers come from"):]
+        table = table[: table.index("\n### ")]
+        quoted = [
+            (float(v), float(lo), float(hi))
+            for v, lo, hi in self.SOURCE_FIGURE.findall(table)
+        ]
+        self.assertGreaterEqual(len(quoted), 5, "sources table stopped parsing")
+
+        for figure in quoted:
+            self.assertIn(
+                figure, quantities,
+                f"README quotes {figure[0]} ({figure[1]}-{figure[2]}), which is not "
+                f"an input in inputs.toml -- the value moved and the prose did not",
+            )
+
+    def test_readme_trace_block_matches_real_output(self):
+        """Every number in the worked example, against the real trace."""
+        block = self._fenced_block(self.readme, "## Auditing a number")
+        buffer = io.StringIO()
+        with contextlib.redirect_stdout(buffer):
+            main(["--trace", "biofilm/composting"])
+        live = buffer.getvalue()
+
+        quoted = set(re.findall(r"\d+\.\d{2,}", block))
+        self.assertGreater(len(quoted), 15, "trace block stopped parsing")
+        missing = sorted(n for n in quoted if n not in live)
+        self.assertFalse(
+            missing,
+            f"README's worked example quotes {missing}, which --trace no longer prints",
+        )
+
+    def test_every_documented_command_runs(self):
+        """Each `python3 -m lca_film ...` in the docs is executed for real.
+
+        A documented command that exits with an error is the failure this
+        project has actually shipped: a printed warning told the reader to run
+        a scenario that had been deleted two commits earlier. Reading the
+        commands out of the prose and running them is the only check that
+        cannot itself go stale.
+        """
+        docs = ["README.md", "START-HERE.md"]
+        commands = []
+        for name in docs:
+            text = (self.ROOT / name).read_text(encoding="utf-8")
+            # Join shell line continuations before splitting into commands.
+            for line in text.replace("\\\n", " ").splitlines():
+                line = line.strip().lstrip("$ ").strip()
+                if not line.startswith("python3 -m lca_film"):
+                    continue
+                line = line.split("#", 1)[0]  # strip the trailing comment
+                commands.append((name, shlex.split(line)[3:]))
+
+        self.assertGreaterEqual(len(commands), 12, "stopped finding documented commands")
+
+        with tempfile.TemporaryDirectory() as tmp:
+            for source, argv in commands:
+                argv = list(argv)
+                # Redirect the documented artefact paths, and point the
+                # documented placeholder input file at the real one.
+                for flag, replacement in (
+                    ("--svg", str(Path(tmp) / "chart.svg")),
+                    ("--csv", str(Path(tmp) / "out.csv")),
+                    ("--inputs", str(DEFAULT_INPUTS)),
+                ):
+                    if flag in argv:
+                        argv[argv.index(flag) + 1] = replacement
+
+                with self.subTest(source=source, command=" ".join(argv)):
+                    buffer = io.StringIO()
+                    with contextlib.redirect_stdout(buffer), \
+                            contextlib.redirect_stderr(io.StringIO()):
+                        status = main(argv)
+                    self.assertEqual(
+                        status, 0,
+                        f"{source} documents a command that exits {status}",
+                    )
+                    self.assertTrue(
+                        buffer.getvalue().strip() or "--svg" in argv or "--csv" in argv,
+                        f"{source} documents a command that prints nothing",
+                    )

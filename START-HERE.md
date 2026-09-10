@@ -8,7 +8,7 @@ The domain happens to be materials science: comparing the carbon footprint of
 three candidate films. **Nothing on this page depends on knowing any of that.**
 The domain is the test case; the engineering is the point.
 
-Python 3.11+, standard library only, no install step, 88 tests.
+Python 3.11+, standard library only, no install step, 92 tests.
 
 ---
 
@@ -140,7 +140,7 @@ Or by hand:
 python3 -m lca_film --table              # the answer
 python3 -m lca_film --trace biofilm/composting   # every step of the arithmetic
 python3 -m lca_film --boundaries         # are these numbers measuring the same thing?
-python3 -m unittest discover -s tests    # 88 tests
+python3 -m unittest discover -s tests    # 92 tests
 ```
 
 The one worth running is this. Substitute a friendlier number for the input that
@@ -165,7 +165,7 @@ the output says so without being asked.**
 | [`README.md`](README.md) | The full study, including all the materials science. |
 | `lca_film/confidence.py` | 75 lines. The whole propagation rule. |
 | `lca_film/model.py` | The types, including `ScopeVariant` and its docstring. |
-| `tests/test_lca.py` | 88 tests, 59 of them defending the provenance system rather than the arithmetic. |
+| `tests/test_lca.py` | 92 tests, 63 of them defending the provenance system rather than the arithmetic — including four that assert the documentation against a live run. |
 
 ## Honest limitations
 

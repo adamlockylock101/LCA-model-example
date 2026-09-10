@@ -42,7 +42,7 @@ python3 -m lca_film --placeholders                    # unverifiable inputs
 python3 -m lca_film --svg out/chart.svg --csv out.csv # artefacts
 python3 -m lca_film --inputs mine.toml                # a different dataset
 
-python3 -m unittest discover -s tests                 # 88 tests
+python3 -m unittest discover -s tests                 # 92 tests
 ```
 
 Change one input without touching the file:
@@ -296,7 +296,7 @@ lca_film/
   report.py          Tables, ASCII chart, sensitivity, boundary audit, --trace
   chart.py           Dependency-free themed SVG chart
   __main__.py        CLI
-tests/test_lca.py    88 tests
+tests/test_lca.py    92 tests, incl. asserting this README against the model
 out/                 Generated charts (regenerate with --svg)
 ```
 
