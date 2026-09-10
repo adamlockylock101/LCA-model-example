@@ -15,6 +15,16 @@ with both tags printed next to the number wherever it appears.
 
 Python 3.11+, **no dependencies** (stdlib `tomllib`, hand-written SVG).
 
+## Documents
+
+| Document | For |
+|---|---|
+| **[FINDINGS.md](FINDINGS.md)** | **Start here.** Plain-language headline conclusions, no modelling detail |
+| [SOURCING.md](SOURCING.md) | What a candidate figure must state before it can be used |
+| This README | The model itself: how it works, every source, every caveat |
+
+---
+
 ## It is a tool, not a report
 
 Inputs go in, results come out. Charts are rendered from live output, never
