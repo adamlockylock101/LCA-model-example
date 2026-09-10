@@ -14,25 +14,17 @@ Python 3.11+, standard library only, no install step, 92 tests.
 
 ## The problem it solves
 
-You are assembling a number from thirty other numbers. Some are from
-peer-reviewed sources. Some are engineering estimates. Some you half-remember.
-Some were retrieved by a language model and look authoritative.
+You are assembling a number from thirty other numbers. Some are peer-reviewed,
+some are engineering estimates, some were retrieved by a language model and look
+authoritative.
 
-The arithmetic doesn't care. Add a well-sourced figure to a guess and you get a
-number that *renders identically* to a well-sourced one. The uncertainty is real
-but invisible, and it stays invisible right up until someone makes a decision on
-it.
+The arithmetic doesn't care. Add a well-sourced figure to a guess and the result
+renders identically to a well-sourced one. Caveats sections and spreadsheet
+comments don't fix this, because they aren't attached to the number: the figure
+gets copied out and the warning stays behind.
 
-The usual mitigations don't hold:
-
-- **A caveats section.** Nobody reads it, and it isn't attached to the number it
-  qualifies. The number gets screenshotted; the caveat doesn't travel with it.
-- **A spreadsheet comment.** Same problem, plus it dies on the first copy-paste.
-- **Discipline.** Works until the fourth revision, when the author has forgotten
-  which cell was the guess.
-
-So the provenance is made **structural**: part of the type, enforced by the
-loader, propagated by the arithmetic, and impossible to strip at render time.
+So provenance is made **structural** — part of the type, enforced by the loader,
+propagated by the arithmetic, impossible to strip at render time.
 
 ## Four mechanisms
 
@@ -98,10 +90,10 @@ The effect, measured on this dataset:
 | Before scope variants existed | **3.49 – 242.90** |
 | After | **10.32 – 17.40** |
 
-No evidence changed. No number was revised. Two figures that had been serving as
-range bounds turned out to measure a different product and a laboratory
-respectively, and the type system stopped accepting them. The former range was
-not a finding about the world — it was a finding about a bug in the model.
+No evidence changed. Two figures serving as range bounds turned out to measure a
+different product and a laboratory respectively, and the type system stopped
+accepting them. The old range was not a finding about the world; it was a
+finding about a bug in the model.
 
 ### 4. Correctness of the *number* and correctness of the *quantity* are tracked separately
 
